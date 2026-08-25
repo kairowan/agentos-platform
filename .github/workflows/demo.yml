@@ -88,8 +88,8 @@ jobs:
           adb exec-out screencap -p > demo/AgentShell-home.png
           grep -q 'text="本地时间"' /tmp/agentos-window.xml
           grep -q 'system.time.read 通过 Capability Broker 提供' /tmp/agentos-window.xml
-          shell_uid=$(adb shell dumpsys package com.agentos.shell | sed -n 's/.*userId=\([0-9]*\).*/\1/p' | head -1)
-          service_uid=$(adb shell dumpsys package com.agentos.capability | sed -n 's/.*userId=\([0-9]*\).*/\1/p' | head -1)
+          shell_uid=$(adb shell pm list packages -U com.agentos.shell | sed -n 's/.*uid:\([0-9]*\).*/\1/p' | tr -d '\r')
+          service_uid=$(adb shell pm list packages -U com.agentos.capability | sed -n 's/.*uid:\([0-9]*\).*/\1/p' | tr -d '\r')
           echo "Shell UID: $shell_uid; Capability Service UID: $service_uid"
           test -n "$shell_uid"
           test -n "$service_uid"
