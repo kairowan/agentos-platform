@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentos.dev/schemas/generated-ui.schema.json",
+  "title": "AgentOS Generated Screen",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "title", "blocks"],
+  "properties": {
+    "version": { "const": 1 },
+    "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "blocks": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "text"],
+            "properties": {
+              "type": { "const": "paragraph" },
+              "text": { "type": "string", "maxLength": 4000 }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "label", "value"],
+            "properties": {
+              "type": { "const": "fact" },
+              "label": { "type": "string", "maxLength": 80 },
+              "value": { "type": "string", "maxLength": 500 }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "label", "prompt"],
+            "properties": {
+              "type": { "const": "action" },
+              "label": { "type": "string", "maxLength": 80 },
+              "prompt": { "type": "string", "maxLength": 1000 }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+

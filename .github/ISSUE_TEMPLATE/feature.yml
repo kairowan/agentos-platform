@@ -1,0 +1,27 @@
+name: Capability or system feature
+description: Propose one testable AgentOS capability or platform behavior
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: User goal
+      description: What should a user be able to accomplish?
+    validations:
+      required: true
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Trust boundary
+      description: What data and Android privileges are required, and where is confirmation needed?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance check
+      description: Describe the smallest runnable check that proves it works safely.
+    validations:
+      required: true
+
