@@ -40,7 +40,7 @@ jobs:
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
       - name: Capture real shell screenshot
         run: |
-          emulator \
+          "$ANDROID_SDK_ROOT/emulator/emulator" \
             -avd agentos-demo \
             -no-window \
             -noaudio \
@@ -60,7 +60,10 @@ jobs:
             fi
             sleep 3
           done
-          test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
+          if [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]; then
+            cat /tmp/agentos-emulator.log
+            exit 1
+          fi
           adb install -r apps/AgentShell/build/outputs/apk/debug/AgentShell-debug.apk
           adb shell input keyevent 82
           adb shell am start -W -n com.agentos.shell/.MainActivity
