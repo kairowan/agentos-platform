@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      ANDROID_AVD_HOME: ${{ runner.temp }}/agentos-avd
+      ANDROID_AVD_HOME: /tmp/agentos-avd
     steps:
       - uses: actions/checkout@v7
         with:
