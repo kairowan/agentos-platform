@@ -1,4 +1,4 @@
-package com.agentos.shell
+package com.agentos.capability.core
 
 import java.time.Instant
 import java.util.UUID
@@ -36,8 +36,8 @@ class InMemoryCapabilityAuditLog(private val capacity: Int = 200) {
         require(capacity > 0)
     }
 
-    // ponytail: A bounded in-memory log is sufficient for the prototype. Move it
-    // to encrypted, user-scoped storage before capabilities handle personal data.
+    // ponytail: The prototype keeps metadata only and bounds memory. Move this
+    // behind encrypted, user-scoped storage before handling personal data.
     private val events = ArrayDeque<CapabilityAuditEvent>()
 
     @Synchronized
@@ -115,4 +115,3 @@ class CapabilityBroker(
         auditLog.append(CapabilityAuditEvent(Instant.now(), id, decision))
     }
 }
-

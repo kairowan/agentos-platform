@@ -1,5 +1,6 @@
 package com.agentos.shell
 
+import com.agentos.capability.core.CapabilityId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test

@@ -1,4 +1,4 @@
-package com.agentos.shell
+package com.agentos.capability.core
 
 import android.content.Context
 import android.content.Intent
@@ -17,6 +17,7 @@ enum class CapabilityId(val value: String) {
         fun fromWire(value: String): CapabilityId? = entries.firstOrNull { it.value == value }
     }
 }
+
 enum class CapabilityRisk {
     READ_ONLY,
     REQUIRES_CONFIRMATION,
@@ -91,11 +92,11 @@ class StorageCapability(context: Context) : SystemCapability {
 
     override fun execute() = CapabilityResult(
         capability = descriptor.id,
-        title = "应用存储",
+        title = "能力服务存储",
         facts = listOf(
             "可用空间" to directory.usableSpace.toReadableSize(),
             "总空间" to directory.totalSpace.toReadableSize(),
-            "访问范围" to "AgentOS 私有目录",
+            "访问范围" to "Capability Service 私有目录",
         ),
     )
 }
@@ -115,7 +116,7 @@ class OpenWifiSettingsCapability(context: Context) : SystemCapability {
         return CapabilityResult(
             capability = descriptor.id,
             title = "已打开 Wi-Fi 设置",
-            facts = listOf("执行方式" to "用户确认后由 Capability Broker 调用"),
+            facts = listOf("执行方式" to "用户确认后由独立 Capability Service 调用"),
         )
     }
 }

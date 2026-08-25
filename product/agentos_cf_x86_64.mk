@@ -7,5 +7,7 @@ PRODUCT_MODEL := AgentOS Cuttlefish
 PRODUCT_MANUFACTURER := AgentOS
 
 PRODUCT_PACKAGES += \
-    AgentShell
+    AgentShell \
+    AgentCapabilityService
 
+PRODUCT_PRIVATE_SEPOLICY_DIRS += vendor/agentos/sepolicy/private

@@ -1,0 +1,2 @@
+user=_app seinfo=platform name=com.agentos.shell domain=agent_shell type=agent_shell_data_file levelFrom=user
+user=_app seinfo=platform name=com.agentos.capability domain=agent_capability_service type=agent_capability_service_data_file levelFrom=user

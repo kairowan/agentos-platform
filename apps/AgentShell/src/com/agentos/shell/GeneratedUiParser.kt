@@ -1,5 +1,6 @@
 package com.agentos.shell
 
+import com.agentos.capability.core.CapabilityId
 import org.json.JSONObject
 import org.json.JSONTokener
 

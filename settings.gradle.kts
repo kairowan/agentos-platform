@@ -16,4 +16,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "agentos-platform"
 include(":apps:AgentShell")
-
+include(":libraries:CapabilityApi")
+include(":libraries:CapabilityCore")
+include(":services:AgentCapabilityService")

@@ -1,5 +1,12 @@
 package com.agentos.shell
 
+import com.agentos.capability.core.CapabilityBroker
+import com.agentos.capability.core.CapabilityDescriptor
+import com.agentos.capability.core.CapabilityId
+import com.agentos.capability.core.CapabilityRegistry
+import com.agentos.capability.core.CapabilityResult
+import com.agentos.capability.core.CapabilityRisk
+import com.agentos.capability.core.SystemCapability
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.CancellationException
 import java.net.SocketTimeoutException

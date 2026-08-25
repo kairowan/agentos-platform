@@ -1,5 +1,12 @@
 package com.agentos.shell
 
+import com.agentos.capability.core.AuditDecision
+import com.agentos.capability.core.BrokerOutcome
+import com.agentos.capability.core.CapabilityBroker
+import com.agentos.capability.core.CapabilityId
+import com.agentos.capability.core.CapabilityRegistry
+import com.agentos.capability.core.CapabilityRisk
+import com.agentos.capability.core.InMemoryCapabilityAuditLog
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -55,4 +62,3 @@ class CapabilityBrokerTest {
         assertEquals(0, executions)
     }
 }
-

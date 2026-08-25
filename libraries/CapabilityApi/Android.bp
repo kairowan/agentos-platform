@@ -1,0 +1,12 @@
+android_library {
+    name: "AgentCapabilityApi",
+    srcs: [
+        "src/main/aidl/**/*.aidl",
+        "src/main/java/**/*.kt",
+    ],
+    aidl: {
+        local_include_dirs: ["src/main/aidl"],
+    },
+    sdk_version: "system_current",
+    min_sdk_version: "29",
+}

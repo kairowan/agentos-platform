@@ -1,6 +1,7 @@
 package com.agentos.shell
 
 import android.os.Bundle
+import com.agentos.capability.core.ApprovalRequest
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background

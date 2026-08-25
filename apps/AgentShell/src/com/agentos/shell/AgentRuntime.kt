@@ -1,5 +1,10 @@
 package com.agentos.shell
 
+import com.agentos.capability.core.ApprovalRequest
+import com.agentos.capability.core.BrokerOutcome
+import com.agentos.capability.core.CapabilityBroker
+import com.agentos.capability.core.CapabilityId
+import com.agentos.capability.core.CapabilityResult
 import kotlinx.coroutines.CancellationException
 
 data class AgentPlan(
@@ -47,10 +52,16 @@ class LocalAgentPlanner : AgentPlanner {
 }
 
 class AgentRuntime(
-    private val broker: CapabilityBroker,
+    private val broker: CapabilityGateway,
     private val localPlanner: AgentPlanner = LocalAgentPlanner(),
     private val remotePlannerFactory: (ModelConfig) -> AgentPlanner = ::OpenAiCompatiblePlanner,
 ) {
+    constructor(
+        broker: CapabilityBroker,
+        localPlanner: AgentPlanner = LocalAgentPlanner(),
+        remotePlannerFactory: (ModelConfig) -> AgentPlanner = ::OpenAiCompatiblePlanner,
+    ) : this(LocalCapabilityGateway(broker), localPlanner, remotePlannerFactory)
+
     suspend fun handle(prompt: String, modelConfig: ModelConfig?): AgentTurn {
         var notice: String? = null
         val plan = if (modelConfig == null) {
@@ -68,11 +79,11 @@ class AgentRuntime(
         return execute(plan, notice)
     }
 
-    fun approve(token: String): AgentTurn = broker.approve(token).toTurn()
+    suspend fun approve(token: String): AgentTurn = broker.approve(token).toTurn()
 
-    fun deny(token: String): AgentTurn = broker.deny(token).toTurn()
+    suspend fun deny(token: String): AgentTurn = broker.deny(token).toTurn()
 
-    private fun execute(plan: AgentPlan, notice: String?): AgentTurn {
+    private suspend fun execute(plan: AgentPlan, notice: String?): AgentTurn {
         val id = plan.capability ?: return AgentTurn(plan.screen, notice = notice)
         return broker.request(id).toTurn(plan.screen, notice)
     }

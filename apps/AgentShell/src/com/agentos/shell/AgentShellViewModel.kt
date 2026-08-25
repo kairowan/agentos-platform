@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.agentos.capability.core.ApprovalRequest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -101,17 +102,23 @@ class AgentShellViewModel internal constructor(
 
     fun approve() {
         val token = mutableUiState.value.approval?.token ?: return
-        val turn = runtime.approve(token)
-        mutableUiState.update {
-            it.copy(screen = turn.screen, approval = null, notice = turn.notice)
+        activeTurn?.cancel()
+        activeTurn = viewModelScope.launch {
+            val turn = runtime.approve(token)
+            mutableUiState.update {
+                it.copy(screen = turn.screen, approval = null, notice = turn.notice)
+            }
         }
     }
 
     fun deny() {
         val token = mutableUiState.value.approval?.token ?: return
-        val turn = runtime.deny(token)
-        mutableUiState.update {
-            it.copy(screen = turn.screen, approval = null, notice = turn.notice)
+        activeTurn?.cancel()
+        activeTurn = viewModelScope.launch {
+            val turn = runtime.deny(token)
+            mutableUiState.update {
+                it.copy(screen = turn.screen, approval = null, notice = turn.notice)
+            }
         }
     }
 
@@ -126,15 +133,7 @@ class AgentShellViewModel internal constructor(
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 require(modelClass == AgentShellViewModel::class.java)
-                val registry = CapabilityRegistry(
-                    listOf(
-                        TimeCapability(),
-                        DeviceCapability(),
-                        StorageCapability(context),
-                        OpenWifiSettingsCapability(context),
-                    ),
-                )
-                return AgentShellViewModel(AgentRuntime(CapabilityBroker(registry))) as T
+                return AgentShellViewModel(AgentRuntime(AgentCapabilityClient(context))) as T
             }
         }
     }

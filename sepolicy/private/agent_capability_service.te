@@ -1,0 +1,7 @@
+type agent_capability_service, domain;
+app_domain(agent_capability_service)
+
+type agent_capability_service_data_file, file_type, data_file_type, core_data_file_type, app_data_file_type;
+
+# Replies and callbacks travel over the same Binder channel.
+binder_call(agent_capability_service, agent_shell)
