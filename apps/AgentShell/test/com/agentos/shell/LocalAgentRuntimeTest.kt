@@ -1,6 +1,8 @@
 package com.agentos.shell
 
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CancellationException
+import java.net.SocketTimeoutException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -60,11 +62,51 @@ class LocalAgentRuntimeTest {
         assertTrue(turn.notice.orEmpty().contains("离线安全模式"))
     }
 
+    @Test
+    fun usesSuccessfulRemotePlannerResult() = runBlocking {
+        val remoteScreen = GeneratedScreen("远程规划结果", listOf(UiBlock.Paragraph("validated")))
+        val remoteRuntime = AgentRuntime(
+            broker = CapabilityBroker(registry),
+            remotePlannerFactory = { AgentPlanner { AgentPlan(remoteScreen) } },
+        )
+
+        val turn = remoteRuntime.handle("生成一个界面", modelConfig())
+
+        assertEquals("远程规划结果", turn.screen.title)
+        assertNull(turn.notice)
+    }
+
+    @Test
+    fun fallsBackAfterTransportTimeout() = runBlocking {
+        val remoteRuntime = AgentRuntime(
+            broker = CapabilityBroker(registry),
+            remotePlannerFactory = { AgentPlanner { throw SocketTimeoutException("timeout") } },
+        )
+
+        val turn = remoteRuntime.handle("查看设备状态", modelConfig())
+
+        assertEquals("DEVICE", turn.screen.factValue())
+        assertTrue(turn.notice.orEmpty().contains("离线安全模式"))
+    }
+
+    @Test(expected = CancellationException::class)
+    fun propagatesPlannerCancellation() = runBlocking {
+        val remoteRuntime = AgentRuntime(
+            broker = CapabilityBroker(registry),
+            remotePlannerFactory = { AgentPlanner { throw CancellationException("cancelled") } },
+        )
+
+        remoteRuntime.handle("查看设备状态", modelConfig())
+    }
+
     private fun GeneratedScreen.factValue(): String =
         blocks.filterIsInstance<UiBlock.Fact>().single().value
 
     private fun GeneratedScreen.paragraph(): String =
         blocks.filterIsInstance<UiBlock.Paragraph>().first().text
+
+    private fun modelConfig() =
+        ModelConfig("https://example.com/v1/chat/completions", "test", "secret")
 }
 
 internal fun fakeCapability(
@@ -79,4 +121,3 @@ internal fun fakeCapability(
         return CapabilityResult(id, id.value, listOf("result" to id.name))
     }
 }
-

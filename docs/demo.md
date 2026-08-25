@@ -23,4 +23,6 @@ adb shell cmd package set-home-activity com.agentos.shell/.MainActivity
 5. Verify the warning and automatic offline result.
 
 This script is the source for the first public screen recording once an emulator or
-Cuttlefish host is available.
+Cuttlefish host is available. The `Capture Demo` workflow boots a real Android 35
+emulator, installs the tagged APK, captures the HOME surface, and attaches the PNG
+to the corresponding GitHub release.

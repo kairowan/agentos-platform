@@ -1,0 +1,74 @@
+name: Capture Demo
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag whose APK and screenshot should be reproduced
+        required: true
+        default: v0.2.0
+
+permissions:
+  contents: write
+
+jobs:
+  screenshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v4
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "8.12"
+      - name: Build APK
+        run: gradle --no-daemon testDebugUnitTest assembleDebug
+      - name: Create Android virtual device
+        run: |
+          sdkmanager "platform-tools" "emulator" "system-images;android-35;google_apis;x86_64"
+          echo no | avdmanager create avd \
+            --force \
+            --name agentos-demo \
+            --package "system-images;android-35;google_apis;x86_64" \
+            --device pixel_6
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+          nohup emulator \
+            -avd agentos-demo \
+            -no-window \
+            -noaudio \
+            -no-boot-anim \
+            -no-snapshot \
+            -gpu swiftshader_indirect \
+            >/tmp/agentos-emulator.log 2>&1 &
+      - name: Capture real shell screenshot
+        run: |
+          adb wait-for-device
+          for attempt in $(seq 1 120); do
+            if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then
+              break
+            fi
+            sleep 5
+          done
+          test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
+          adb install -r apps/AgentShell/build/outputs/apk/debug/AgentShell-debug.apk
+          adb shell am start -W -n com.agentos.shell/.MainActivity
+          sleep 5
+          mkdir -p demo
+          adb exec-out screencap -p > demo/AgentShell-home.png
+          file demo/AgentShell-home.png | grep -q 'PNG image data'
+      - uses: actions/upload-artifact@v7
+        with:
+          name: AgentShell-demo
+          path: demo/AgentShell-home.png
+          if-no-files-found: error
+      - name: Attach screenshot to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ inputs.tag }}" demo/AgentShell-home.png --clobber
+
