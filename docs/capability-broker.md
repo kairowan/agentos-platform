@@ -28,3 +28,14 @@ signature mismatch, and shared-UID ambiguity fail closed in runnable JVM tests.
 The policy in `sepolicy/private` assigns the two packages separate domains and grants
 only Binder communication between them. Full policy compilation and denial-log
 verification remain gated on the first complete AOSP image build.
+
+## Incoming events
+
+The Broker process also owns `AgentNotificationListenerService`. Android grants that
+listener access only after explicit user approval. It accepts message-category
+notifications, rejects ongoing notifications and group summaries, bounds all text,
+and sends the sanitized event to the Shell through a one-way AIDL callback.
+
+Incoming notification content is not added to a remote-model prompt automatically.
+Sending a reply is deliberately not implemented yet; it will require a separate
+typed capability and a trusted one-time confirmation.

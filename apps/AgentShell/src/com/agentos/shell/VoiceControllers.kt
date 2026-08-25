@@ -23,17 +23,22 @@ internal class VoiceInputController(
             onError("当前系统没有可用的语音识别引擎")
             return
         }
-        val speechRecognizer = recognizer ?: SpeechRecognizer.createSpeechRecognizer(applicationContext)
-            .also { recognizer = it }
-        speechRecognizer.setRecognitionListener(listener)
-        speechRecognizer.startListening(
-            Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
-                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-            },
-        )
-        onListening(true)
+        try {
+            val speechRecognizer = recognizer ?: SpeechRecognizer.createSpeechRecognizer(applicationContext)
+                .also { recognizer = it }
+            speechRecognizer.setRecognitionListener(listener)
+            speechRecognizer.startListening(
+                Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
+                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                },
+            )
+            onListening(true)
+        } catch (_: RuntimeException) {
+            onListening(false)
+            onError("无法启动语音识别服务")
+        }
     }
 
     fun stop() {

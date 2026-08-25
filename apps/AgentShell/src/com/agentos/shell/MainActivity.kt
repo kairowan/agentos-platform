@@ -206,7 +206,7 @@ private fun VoiceCard(state: AgentUiState, onVoice: () -> Unit) {
                 enabled = !state.isWorking && state.approval == null,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(if (state.isListening) "停止聆听" else "按住体验 · 点击说话")
+                Text(if (state.isListening) "停止聆听" else "点击说话")
             }
         }
     }

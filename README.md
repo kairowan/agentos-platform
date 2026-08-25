@@ -7,10 +7,13 @@ Buildable AgentOS product code for AOSP 17. The
 [`agentos`](https://github.com/kairowan/agentos) bootstrap checks this repository
 out at `vendor/agentos` inside the AOSP source tree.
 
-![AgentOS v0.3.0 using the separate capability service on an Android emulator](https://github.com/kairowan/agentos-platform/releases/download/v0.3.0/AgentShell-home.png)
+![AgentOS v0.4.0 using voice-first UI and the separate capability service](https://github.com/kairowan/agentos-platform/releases/download/v0.4.0/AgentShell-home.png)
 
-## v0.3 baseline
+## v0.4 baseline
 
+- Voice-first Kotlin UI using the platform speech recognizer and text-to-speech
+- Broker-owned notification listener with bounded message-event filtering
+- One-way AIDL event delivery from the trusted service to the HOME shell
 - Kotlin and Jetpack Compose HOME activity
 - Validated generated-interface data model and JSON Schema
 - Separate capability-service APK behind a typed AIDL interface
@@ -44,7 +47,7 @@ services/AgentCapabilityService/build/outputs/apk/debug/AgentCapabilityService-d
 
 GitHub Actions runs the same test and build for every commit and pull request.
 Current APKs are available from
-[the v0.3.0 pre-release](https://github.com/kairowan/agentos-platform/releases/tag/v0.3.0).
+[the v0.4.0 pre-release](https://github.com/kairowan/agentos-platform/releases/tag/v0.4.0).
 Version tags are rebuilt by a separate release workflow, which publishes both the
 APK and its SHA-256 checksum from the tagged commit.
 
@@ -73,12 +76,18 @@ cleartext HTTP is accepted only for `localhost`, `127.0.0.1`, and Android emulat
 host address `10.0.2.2`. Prompts are sent to the configured provider when remote
 mode is enabled.
 
+Notification text is filtered inside the capability-service process and displayed
+locally. Receiving an event does not send its contents to a configured model and
+does not authorize an automatic reply. Notification access remains an explicit
+user-controlled Android setting.
+
 ## Documentation
 
 - [Capability Broker](docs/capability-broker.md)
 - [Model provider](docs/model-provider.md)
 - [Generated UI](docs/generated-ui.md)
 - [Demo flow](docs/demo.md)
+- [Voice and message events](docs/voice-and-events.md)
 
 ## License
 

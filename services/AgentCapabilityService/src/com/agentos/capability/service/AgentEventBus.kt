@@ -15,10 +15,11 @@ internal object AgentEventBus {
         listeners.unregister(listener)
     }
 
+    @Synchronized
     fun publish(event: AgentNotificationEvent) {
         val count = listeners.beginBroadcast()
         try {
-            repeat(count) { listeners.getBroadcastItem(it).onNotificationEvent(event) }
+            repeat(count) { runCatching { listeners.getBroadcastItem(it).onNotificationEvent(event) } }
         } finally {
             listeners.finishBroadcast()
         }
