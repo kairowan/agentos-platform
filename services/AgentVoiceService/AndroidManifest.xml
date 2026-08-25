@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.RECORD_BACKGROUND_AUDIO" />
+    <uses-permission android:name="android.permission.CAPTURE_AUDIO_HOTWORD" />
+    <uses-permission android:name="android.permission.MANAGE_HOTWORD_DETECTION" />
+    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS" />
+    <uses-permission android:name="com.agentos.permission.DELIVER_VOICE_COMMAND" />
+
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
+    <application
+        android:allowBackup="false"
+        android:label="AgentOS Voice">
+        <service
+            android:name=".AgentVoiceInteractionService"
+            android:exported="true"
+            android:label="AgentOS Voice"
+            android:permission="android.permission.BIND_VOICE_INTERACTION">
+            <intent-filter>
+                <action android:name="android.service.voice.VoiceInteractionService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.voice_interaction"
+                android:resource="@xml/voice_interaction" />
+        </service>
+
+        <service
+            android:name=".AgentHotwordDetectionService"
+            android:allowSharedIsolatedProcess="true"
+            android:exported="true"
+            android:isolatedProcess="true"
+            android:permission="android.permission.BIND_HOTWORD_DETECTION_SERVICE" />
+
+        <service
+            android:name=".AgentVoiceInteractionSessionService"
+            android:exported="true"
+            android:permission="android.permission.BIND_VOICE_INTERACTION"
+            android:process=":voice_session" />
+
+        <receiver
+            android:name=".AgentVoiceRearmReceiver"
+            android:exported="true"
+            android:permission="com.agentos.permission.DELIVER_VOICE_COMMAND">
+            <intent-filter>
+                <action android:name="com.agentos.voice.action.REARM" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

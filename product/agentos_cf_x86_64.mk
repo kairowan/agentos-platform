@@ -8,6 +8,9 @@ PRODUCT_MANUFACTURER := AgentOS
 
 PRODUCT_PACKAGES += \
     AgentShell \
-    AgentCapabilityService
+    AgentCapabilityService \
+    AgentVoiceService
+
+PRODUCT_PACKAGE_OVERLAYS += vendor/agentos/overlay
 
 PRODUCT_PRIVATE_SEPOLICY_DIRS += vendor/agentos/sepolicy/private

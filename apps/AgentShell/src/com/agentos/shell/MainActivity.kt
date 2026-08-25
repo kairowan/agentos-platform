@@ -1,13 +1,11 @@
 package com.agentos.shell
 
-import android.Manifest
+import android.content.ComponentName
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.Settings
 import com.agentos.capability.core.ApprovalRequest
 import androidx.activity.ComponentActivity
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -51,15 +49,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 class MainActivity : ComponentActivity() {
-    private var voiceInput: VoiceInputController? = null
     private var voiceOutput: VoiceOutputController? = null
     private val viewModel by lazy {
         ViewModelProvider(this, AgentShellViewModel.factory(applicationContext))[AgentShellViewModel::class.java]
     }
-    private val requestMicrophone = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) startVoiceInput() else viewModel.onVoiceError("需要麦克风权限才能使用语音")
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -67,7 +60,8 @@ class MainActivity : ComponentActivity() {
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
                 LaunchedEffect(state.voiceReply) {
                     state.voiceReply?.let {
-                        (voiceOutput ?: VoiceOutputController(applicationContext).also { voiceOutput = it }).speak(it)
+                        (voiceOutput ?: VoiceOutputController(applicationContext, ::rearmHotword)
+                            .also { voiceOutput = it }).speak(it)
                         viewModel.consumeVoiceReply()
                     }
                 }
@@ -83,39 +77,48 @@ class MainActivity : ComponentActivity() {
                     onModelApiKeyChanged = viewModel::updateModelApiKey,
                     onApprove = viewModel::approve,
                     onDeny = viewModel::deny,
-                    onVoice = ::toggleVoiceInput,
+                    onVoiceSettings = {
+                        startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS))
+                    },
                     onNotificationAccess = {
                         startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                     },
                 )
             }
         }
+        handleVoiceCommand(intent)
     }
 
-    private fun toggleVoiceInput() {
-        if (viewModel.uiState.value.isListening) {
-            voiceInput?.stop()
-        } else if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-            startVoiceInput()
-        } else {
-            requestMicrophone.launch(Manifest.permission.RECORD_AUDIO)
-        }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleVoiceCommand(intent)
     }
 
-    private fun startVoiceInput() {
-        val controller = voiceInput ?: VoiceInputController(
-            applicationContext,
-            onResult = viewModel::submitVoice,
-            onListening = viewModel::onVoiceListeningChanged,
-            onError = viewModel::onVoiceError,
-        ).also { voiceInput = it }
-        controller.start()
+    private fun handleVoiceCommand(intent: Intent?) {
+        if (intent?.action != VoiceCommandReceiver.ACTION_RUN_COMMAND) return
+        intent.action = null
+        VoiceCommandInbox.take(intent.getStringExtra(VoiceCommandReceiver.EXTRA_TOKEN))
+            ?.let(viewModel::submitVoice)
+    }
+
+    private fun rearmHotword() {
+        sendBroadcast(
+            Intent(ACTION_REARM_HOTWORD).setComponent(
+                ComponentName(VOICE_PACKAGE, VOICE_REARM_RECEIVER),
+            ),
+        )
     }
 
     override fun onDestroy() {
-        voiceInput?.close()
         voiceOutput?.close()
         super.onDestroy()
+    }
+
+    companion object {
+        private const val ACTION_REARM_HOTWORD = "com.agentos.voice.action.REARM"
+        private const val VOICE_PACKAGE = "com.agentos.voice"
+        private const val VOICE_REARM_RECEIVER = "com.agentos.voice.AgentVoiceRearmReceiver"
     }
 }
 
@@ -132,7 +135,7 @@ internal fun AgentShellContent(
     onModelApiKeyChanged: (String) -> Unit,
     onApprove: () -> Unit,
     onDeny: () -> Unit,
-    onVoice: () -> Unit,
+    onVoiceSettings: () -> Unit,
     onNotificationAccess: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -146,7 +149,7 @@ internal fun AgentShellContent(
             Header(state.useRemoteModel)
             ModelSettings(state, onToggleModelSettings, onRemoteModelEnabled,
                 onModelEndpointChanged, onModelNameChanged, onModelApiKeyChanged)
-            VoiceCard(state, onVoice)
+            VoiceCard(state, onVoiceSettings)
 
             state.notice?.let { NoticeCard(it) }
             NotificationInbox(state, onNotificationAccess)
@@ -190,23 +193,25 @@ internal fun AgentShellContent(
 }
 
 @Composable
-private fun VoiceCard(state: AgentUiState, onVoice: () -> Unit) {
+private fun VoiceCard(state: AgentUiState, onVoiceSettings: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (state.isListening) Color(0xFF17332D) else MaterialTheme.colorScheme.surface,
+            containerColor = if (state.isWorking) Color(0xFF17332D) else MaterialTheme.colorScheme.surface,
         ),
         shape = RoundedCornerShape(24.dp),
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("语音智能体", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(state.voiceStatus, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                if (state.isWorking) "正在处理语音目标" else state.voiceStatus,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Button(
-                onClick = onVoice,
-                enabled = !state.isWorking && state.approval == null,
+                onClick = onVoiceSettings,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(if (state.isListening) "停止聆听" else "点击说话")
+                Text("配置系统语音助手")
             }
         }
     }

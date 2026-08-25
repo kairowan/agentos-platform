@@ -25,8 +25,7 @@ data class AgentUiState(
     val modelEndpoint: String = "",
     val modelName: String = "",
     val modelApiKey: String = "",
-    val isListening: Boolean = false,
-    val voiceStatus: String = "点击后说出目标",
+    val voiceStatus: String = "等待“Hey AgentOS”唤醒",
     val voiceReply: String? = null,
     val notifications: List<AgentNotificationEvent> = emptyList(),
 ) {
@@ -84,18 +83,8 @@ class AgentShellViewModel internal constructor(
     fun submit(prompt: String) = submit(prompt, fromVoice = false)
 
     fun submitVoice(prompt: String) {
-        mutableUiState.update { it.copy(isListening = false, voiceStatus = "已识别：${prompt.take(80)}") }
+        mutableUiState.update { it.copy(voiceStatus = "已识别：${prompt.take(80)}") }
         submit(prompt, fromVoice = true)
-    }
-
-    fun onVoiceListeningChanged(listening: Boolean) {
-        mutableUiState.update {
-            it.copy(isListening = listening, voiceStatus = if (listening) "正在聆听…" else "点击后说出目标")
-        }
-    }
-
-    fun onVoiceError(message: String) {
-        mutableUiState.update { it.copy(isListening = false, voiceStatus = message) }
     }
 
     fun consumeVoiceReply() {
@@ -132,6 +121,7 @@ class AgentShellViewModel internal constructor(
                         ),
                         notice = "未向任何系统能力发出请求。",
                         isWorking = false,
+                        voiceReply = if (fromVoice) "任务未执行。系统内部发生错误。" else null,
                     )
                 }
             }

@@ -26,6 +26,19 @@ out at `vendor/agentos` inside the AOSP source tree.
 - Lifecycle-aware state holder and JVM unit tests
 - Gradle build for daily development and Soong build for AOSP integration
 
+## Current `main`: system hotword path
+
+The next platform increment moves audio capture out of AgentShell. A product-level
+`VoiceInteractionService` now owns an always-on `Hey AgentOS` detector, delegates
+DSP verification to an isolated `HotwordDetectionService`, opens one on-device
+speech-recognition turn, and closes it automatically on silence. Delivery to the
+Shell uses a signature permission plus a one-time command ticket.
+
+This source boundary is buildable only inside AOSP; the standalone Gradle build
+continues to cover the Shell, Broker, and their unit tests. Real always-on wake-up
+also requires a target device with a SoundTrigger DSP and an enrolled keyphrase
+model. Cuttlefish does not supply proof of that hardware path.
+
 The model and shell remain outside the capability-service process. They can select
 only registered capability IDs; the Broker independently decides whether an operation
 executes, is denied, or requires trusted confirmation.
@@ -58,7 +71,7 @@ From the AOSP tree created by the main repository:
 ```bash
 source build/envsetup.sh
 lunch agentos_cf_x86_64-aosp_current-userdebug
-m AgentShell AgentCapabilityService
+m AgentShell AgentCapabilityService AgentVoiceService
 ```
 
 Use `m` instead of the two module targets to build the complete Cuttlefish image.
@@ -88,6 +101,7 @@ user-controlled Android setting.
 - [Generated UI](docs/generated-ui.md)
 - [Demo flow](docs/demo.md)
 - [Voice and message events](docs/voice-and-events.md)
+- [ADR: system hotword boundary](docs/adr/0001-system-hotword-boundary.md)
 
 ## License
 

@@ -1,0 +1,31 @@
+android_app {
+    name: "AgentVoiceService",
+    package_name: "com.agentos.voice",
+    srcs: ["src/**/*.java"],
+    manifest: "AndroidManifest.xml",
+    resource_dirs: ["res"],
+    certificate: "platform",
+    privileged: true,
+    product_specific: true,
+    platform_apis: true,
+    required: [
+        "privapp-permissions-com.agentos.voice",
+        "default-permissions-com.agentos.voice",
+    ],
+}
+
+prebuilt_etc {
+    name: "privapp-permissions-com.agentos.voice",
+    src: "permissions/privapp-permissions-com.agentos.voice.xml",
+    filename_from_src: true,
+    sub_dir: "permissions",
+    product_specific: true,
+}
+
+prebuilt_etc {
+    name: "default-permissions-com.agentos.voice",
+    src: "permissions/default-permissions-com.agentos.voice.xml",
+    filename_from_src: true,
+    sub_dir: "default-permissions",
+    product_specific: true,
+}

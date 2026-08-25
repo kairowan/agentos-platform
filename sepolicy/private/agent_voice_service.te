@@ -1,0 +1,9 @@
+type agent_voice_service, domain;
+app_domain(agent_voice_service)
+
+type agent_voice_service_data_file, file_type, data_file_type, core_data_file_type, app_data_file_type;
+
+# VoiceInteractionManagerService owns activation and audio routing. The isolated
+# HotwordDetectionService remains in Android's isolated-app sandbox.
+binder_call(agent_voice_service, system_server)
+binder_call(system_server, agent_voice_service)
