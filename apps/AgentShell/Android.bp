@@ -13,6 +13,8 @@ android_app {
         "androidx.lifecycle_lifecycle-runtime-compose",
         "androidx.lifecycle_lifecycle-viewmodel",
         "androidx.lifecycle_lifecycle-viewmodel-compose",
+        "androidx.lifecycle_lifecycle-viewmodel-ktx",
+        "kotlinx_coroutines_android",
     ],
     certificate: "platform",
     privileged: true,

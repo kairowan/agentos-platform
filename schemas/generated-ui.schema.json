@@ -8,6 +8,16 @@
   "properties": {
     "version": { "const": 1 },
     "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "capability": {
+      "type": ["string", "null"],
+      "enum": [
+        null,
+        "system.time.read",
+        "system.device.read",
+        "system.storage.read",
+        "system.settings.wifi.open"
+      ]
+    },
     "blocks": {
       "type": "array",
       "maxItems": 100,
@@ -47,4 +57,3 @@
     }
   }
 }
-

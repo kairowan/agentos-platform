@@ -9,6 +9,9 @@ grep -q 'PRODUCT_PACKAGES' "${project_root}/product/agentos_cf_x86_64.mk"
 grep -q 'AgentShell' "${project_root}/product/agentos_cf_x86_64.mk"
 grep -q 'android.intent.category.HOME' "${project_root}/apps/AgentShell/AndroidManifest.xml"
 grep -q 'system.time.read' "${project_root}/apps/AgentShell/src/com/agentos/shell/Capabilities.kt"
+grep -q 'class CapabilityBroker' "${project_root}/apps/AgentShell/src/com/agentos/shell/CapabilityBroker.kt"
+grep -q 'class OpenAiCompatiblePlanner' "${project_root}/apps/AgentShell/src/com/agentos/shell/OpenAiCompatiblePlanner.kt"
+grep -q 'class GeneratedUiParser' "${project_root}/apps/AgentShell/src/com/agentos/shell/GeneratedUiParser.kt"
 python3 -m json.tool "${project_root}/schemas/generated-ui.schema.json" >/dev/null
 
 echo "AgentOS platform checks passed"
