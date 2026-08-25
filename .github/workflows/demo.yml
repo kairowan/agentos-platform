@@ -77,25 +77,34 @@ jobs:
           adb pull /sdcard/agentos-before.xml /tmp/agentos-before.xml
           tap_coordinates=$(python3 -c 'import re,sys,xml.etree.ElementTree as ET; node=next(n for n in ET.parse(sys.argv[1]).iter("node") if n.get("text") == "查看当前时间"); x1,y1,x2,y2=map(int,re.findall(r"\d+",node.get("bounds"))); print((x1+x2)//2,(y1+y2)//2)' /tmp/agentos-before.xml)
           adb shell input tap $tap_coordinates
-          sleep 2
-          adb shell uiautomator dump /sdcard/agentos-window.xml
-          adb pull /sdcard/agentos-window.xml /tmp/agentos-window.xml
+          for attempt in $(seq 1 10); do
+            sleep 1
+            adb shell uiautomator dump /sdcard/agentos-window.xml
+            adb pull /sdcard/agentos-window.xml /tmp/agentos-window.xml
+            if grep -q 'text="本地时间"' /tmp/agentos-window.xml; then break; fi
+          done
+          python3 -c 'import sys,xml.etree.ElementTree as ET; print("UI text:", " | ".join(filter(None,(n.get("text") for n in ET.parse(sys.argv[1]).iter("node")))))' /tmp/agentos-window.xml
+          mkdir -p demo
+          adb exec-out screencap -p > demo/AgentShell-home.png
           grep -q 'text="本地时间"' /tmp/agentos-window.xml
           grep -q 'system.time.read 通过 Capability Broker 提供' /tmp/agentos-window.xml
           shell_uid=$(adb shell dumpsys package com.agentos.shell | sed -n 's/.*userId=\([0-9]*\).*/\1/p' | head -1)
           service_uid=$(adb shell dumpsys package com.agentos.capability | sed -n 's/.*userId=\([0-9]*\).*/\1/p' | head -1)
+          echo "Shell UID: $shell_uid; Capability Service UID: $service_uid"
           test -n "$shell_uid"
           test -n "$service_uid"
           test "$shell_uid" != "$service_uid"
           test -n "$(adb shell pidof com.agentos.capability | tr -d '\r')"
-          mkdir -p demo
-          adb exec-out screencap -p > demo/AgentShell-home.png
           file demo/AgentShell-home.png | grep -q 'PNG image data'
       - uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: AgentShell-demo
-          path: demo/AgentShell-home.png
-          if-no-files-found: error
+          path: |
+            demo/AgentShell-home.png
+            /tmp/agentos-before.xml
+            /tmp/agentos-window.xml
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v7
         if: always()
         with:
