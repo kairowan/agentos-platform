@@ -1,11 +1,15 @@
 package com.agentos.shell
 
 import org.json.JSONObject
+import org.json.JSONTokener
 
 class GeneratedUiParser {
     fun parse(payload: String): AgentPlan {
         require(payload.toByteArray().size <= MAX_PAYLOAD_BYTES) { "Generated UI payload is too large" }
-        val root = JSONObject(payload)
+        val tokener = JSONTokener(payload)
+        val root = tokener.nextValue() as? JSONObject
+            ?: throw IllegalArgumentException("Generated UI root must be an object")
+        require(tokener.nextClean() == 0.toChar()) { "Generated UI contains trailing content" }
         root.requireOnly(ROOT_KEYS)
         require(root.getInt("version") == 1) { "Unsupported generated UI version" }
 

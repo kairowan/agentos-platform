@@ -36,6 +36,7 @@ class OpenAiCompatiblePlanner(
             connection.connectTimeout = 15_000
             connection.readTimeout = 45_000
             connection.doOutput = true
+            connection.instanceFollowRedirects = false
             connection.setRequestProperty("Content-Type", "application/json")
             connection.setRequestProperty("Accept", "application/json")
             if (config.apiKey.isNotBlank()) {

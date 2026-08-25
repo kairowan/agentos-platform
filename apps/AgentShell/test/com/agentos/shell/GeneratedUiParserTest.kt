@@ -32,6 +32,13 @@ class GeneratedUiParserTest {
     }
 
     @Test
+    fun rejectsTrailingContent() {
+        assertThrows(IllegalArgumentException::class.java) {
+            parser.parse("""{"version":1,"title":"x","blocks":[]} trailing""")
+        }
+    }
+
+    @Test
     fun rejectsOversizedText() {
         val text = "x".repeat(4_001)
         assertThrows(IllegalArgumentException::class.java) {
@@ -39,4 +46,3 @@ class GeneratedUiParserTest {
         }
     }
 }
-
