@@ -90,7 +90,7 @@ class LocalAgentRuntimeTest {
     }
 
     @Test(expected = CancellationException::class)
-    fun propagatesPlannerCancellation() = runBlocking {
+    fun propagatesPlannerCancellation() = runBlocking<Unit> {
         val remoteRuntime = AgentRuntime(
             broker = CapabilityBroker(registry),
             remotePlannerFactory = { AgentPlanner { throw CancellationException("cancelled") } },
