@@ -7,7 +7,7 @@ Buildable AgentOS product code for AOSP 17. The
 [`agentos`](https://github.com/kairowan/agentos) bootstrap checks this repository
 out at `vendor/agentos` inside the AOSP source tree.
 
-![AgentOS v0.2.1 running on an Android emulator](https://github.com/kairowan/agentos-platform/releases/download/v0.2.1/AgentShell-home.png)
+![AgentOS v0.3.0 using the separate capability service on an Android emulator](https://github.com/kairowan/agentos-platform/releases/download/v0.3.0/AgentShell-home.png)
 
 ## v0.3 baseline
 
@@ -44,7 +44,7 @@ services/AgentCapabilityService/build/outputs/apk/debug/AgentCapabilityService-d
 
 GitHub Actions runs the same test and build for every commit and pull request.
 Current APKs are available from
-[the v0.2.1 pre-release](https://github.com/kairowan/agentos-platform/releases/tag/v0.2.1).
+[the v0.3.0 pre-release](https://github.com/kairowan/agentos-platform/releases/tag/v0.3.0).
 Version tags are rebuilt by a separate release workflow, which publishes both the
 APK and its SHA-256 checksum from the tagged commit.
 
@@ -55,10 +55,10 @@ From the AOSP tree created by the main repository:
 ```bash
 source build/envsetup.sh
 lunch agentos_cf_x86_64-aosp_current-userdebug
-m AgentShell
+m AgentShell AgentCapabilityService
 ```
 
-Use `m` instead of `m AgentShell` to build the complete Cuttlefish image.
+Use `m` instead of the two module targets to build the complete Cuttlefish image.
 
 ## Security boundary
 
