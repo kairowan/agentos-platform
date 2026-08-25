@@ -15,6 +15,8 @@ jobs:
   screenshot:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      ANDROID_AVD_HOME: ${{ runner.temp }}/agentos-avd
     steps:
       - uses: actions/checkout@v7
         with:
@@ -32,11 +34,13 @@ jobs:
       - name: Create Android virtual device
         run: |
           sdkmanager "platform-tools" "emulator" "system-images;android-35;google_apis;x86_64"
+          mkdir -p "$ANDROID_AVD_HOME"
           echo no | avdmanager create avd \
             --force \
             --name agentos-demo \
             --package "system-images;android-35;google_apis;x86_64" \
             --device pixel_6
+          "$ANDROID_SDK_ROOT/emulator/emulator" -list-avds | grep -Fx agentos-demo
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
       - name: Capture real shell screenshot
         run: |
