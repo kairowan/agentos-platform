@@ -7,6 +7,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.service.voice.AlwaysOnHotwordDetector;
 import android.service.voice.HotwordDetector;
 import android.service.voice.HotwordRejectedResult;
@@ -17,6 +19,7 @@ import java.util.Locale;
 public final class AgentVoiceInteractionService extends VoiceInteractionService {
     private HotwordDetector detector;
     private boolean enrolled;
+    private final Handler handler = new Handler(Looper.getMainLooper());
 
     private final BroadcastReceiver rearmReceiver = new BroadcastReceiver() {
         @Override
@@ -60,6 +63,7 @@ public final class AgentVoiceInteractionService extends VoiceInteractionService 
 
     @Override
     public void onDestroy() {
+        handler.removeCallbacksAndMessages(null);
         unregisterReceiver(rearmReceiver);
         super.onDestroy();
     }
@@ -83,7 +87,13 @@ public final class AgentVoiceInteractionService extends VoiceInteractionService 
 
         @Override
         public void onDetected(AlwaysOnHotwordDetector.EventPayload eventPayload) {
-            showSession(new Bundle(), 0);
+            sendBroadcast(new Intent(VoiceContract.ACTION_INTERRUPT_OUTPUT).setComponent(
+                    new android.content.ComponentName(
+                            VoiceContract.SHELL_PACKAGE,
+                            VoiceContract.COMMAND_RECEIVER)));
+            // ponytail: a short handoff lets the Shell stop TTS before ASR opens.
+            // Target hardware still needs acoustic echo-cancellation calibration.
+            handler.postDelayed(() -> showSession(new Bundle(), 0), 150L);
         }
 
         @Override

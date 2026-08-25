@@ -11,8 +11,10 @@ HOME shell does not record audio and does not run a continuous recognizer.
 
 The product overlay selects `com.agentos.voice` as the default and forced voice
 interaction package. A hardware DSP match is the only always-on trigger. After the
-spoken command ends, the service closes recognition, sends bounded text across a
-signature-protected boundary, and waits until TTS completes before re-arming.
+spoken command ends, the service closes recognition and sends bounded text across a
+signature-protected boundary. Detection is then re-armed during planning and TTS so
+a fresh keyphrase can interrupt the active turn; physical-device acceptance
+therefore includes speaker echo and false-wake tests.
 
 ## Consequences
 

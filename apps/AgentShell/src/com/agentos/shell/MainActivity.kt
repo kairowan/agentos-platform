@@ -80,6 +80,8 @@ class MainActivity : ComponentActivity() {
                     onVoiceSettings = {
                         startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS))
                     },
+                    onToggleHistory = viewModel::toggleHistory,
+                    onClearHistory = viewModel::clearHistory,
                     onNotificationAccess = {
                         startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                     },
@@ -96,10 +98,17 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleVoiceCommand(intent: Intent?) {
-        if (intent?.action != VoiceCommandReceiver.ACTION_RUN_COMMAND) return
+        val action = intent?.action ?: return
+        val token = intent.getStringExtra(VoiceCommandReceiver.EXTRA_TOKEN)
         intent.action = null
-        VoiceCommandInbox.take(intent.getStringExtra(VoiceCommandReceiver.EXTRA_TOKEN))
-            ?.let(viewModel::submitVoice)
+        when (action) {
+            VoiceCommandReceiver.ACTION_RUN_COMMAND ->
+                VoiceCommandInbox.take(token)?.let(viewModel::submitVoice)
+            VoiceCommandReceiver.ACTION_INTERRUPT -> if (VoiceInterruptInbox.take(token)) {
+                voiceOutput?.stop()
+                viewModel.interruptVoiceTurn()
+            }
+        }
     }
 
     private fun rearmHotword() {
@@ -136,6 +145,8 @@ internal fun AgentShellContent(
     onApprove: () -> Unit,
     onDeny: () -> Unit,
     onVoiceSettings: () -> Unit,
+    onToggleHistory: () -> Unit,
+    onClearHistory: () -> Unit,
     onNotificationAccess: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -150,6 +161,7 @@ internal fun AgentShellContent(
             ModelSettings(state, onToggleModelSettings, onRemoteModelEnabled,
                 onModelEndpointChanged, onModelNameChanged, onModelApiKeyChanged)
             VoiceCard(state, onVoiceSettings)
+            HistoryMindMap(state, onToggleHistory, onClearHistory)
 
             state.notice?.let { NoticeCard(it) }
             NotificationInbox(state, onNotificationAccess)
@@ -212,6 +224,61 @@ private fun VoiceCard(state: AgentUiState, onVoiceSettings: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("配置系统语音助手")
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoryMindMap(
+    state: AgentUiState,
+    onToggle: () -> Unit,
+    onClear: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(20.dp),
+    ) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text("历史知识图", fontWeight = FontWeight.Bold)
+                    Text(
+                        "本机私有 · ${state.history.size}/100 个有来源节点",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                TextButton(onClick = onToggle) { Text(if (state.showHistory) "收起" else "查看") }
+            }
+            if (state.showHistory) {
+                if (state.history.isEmpty()) {
+                    Text("完成一次任务后，这里会生成“目标 → 结果”的可追溯节点。",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    val recent = state.history.takeLast(20)
+                    Text("● 我的 AgentOS", color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold)
+                    recent.forEachIndexed { index, entry ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(if (index == recent.lastIndex) "└─" else "├─",
+                                color = MaterialTheme.colorScheme.primary)
+                            Column {
+                                Text(entry.prompt, maxLines = 2, fontWeight = FontWeight.SemiBold)
+                                Text("→ ${entry.responseTitle}", maxLines = 1,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+                TextButton(onClick = onClear, enabled = state.history.isNotEmpty()) {
+                    Text("清除本机历史")
+                }
             }
         }
     }

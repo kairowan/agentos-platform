@@ -27,3 +27,14 @@ internal object VoiceCommandInbox {
         return current.second
     }
 }
+
+internal object VoiceInterruptInbox {
+    private val pending = AtomicReference<String?>(null)
+
+    fun offer(): String = UUID.randomUUID().toString().also(pending::set)
+
+    fun take(token: String?): Boolean {
+        val current = pending.get() ?: return false
+        return token == current && pending.compareAndSet(current, null)
+    }
+}

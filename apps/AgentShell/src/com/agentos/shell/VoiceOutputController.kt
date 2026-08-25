@@ -38,10 +38,15 @@ internal class VoiceOutputController(
         }
     }
 
-    fun close() {
-        textToSpeech.stop()
-        textToSpeech.shutdown()
+    fun stop() {
+        pending = null
+        if (ready) textToSpeech.stop()
         onFinished()
+    }
+
+    fun close() {
+        stop()
+        textToSpeech.shutdown()
     }
 
     private val listener = object : UtteranceProgressListener() {

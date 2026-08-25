@@ -78,9 +78,9 @@ final class AgentVoiceInteractionSession extends VoiceInteractionSession {
                         VoiceContract.COMMAND_RECEIVER))
                 .putExtra(VoiceContract.EXTRA_COMMAND, command.substring(0, Math.min(command.length(), 8000)));
         context.sendBroadcast(intent);
-        // AgentShell rearms detection after TTS completes, so the assistant never
-        // interprets its own spoken response as a new wake phrase.
-        finishSession(false);
+        // Re-arm while planning/TTS is active so a fresh keyphrase can interrupt
+        // the current turn. Hardware echo cancellation must reject speaker audio.
+        finishSession(true);
     }
 
     private void finishSession(boolean rearm) {

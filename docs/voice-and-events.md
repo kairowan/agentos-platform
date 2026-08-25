@@ -12,16 +12,18 @@ SoundTrigger HAL / low-power DSP
   -> one on-device SpeechRecognizer command turn
   -> signature-protected receiver
   -> AgentRuntime -> Capability Broker
-  -> platform TextToSpeech -> re-arm hotword detector
+  -> platform TextToSpeech (hotword remains armed for interruption)
 ```
 
 The Shell has no microphone permission. The selected `VoiceInteractionService` is
 kept lightweight and owns detector lifecycle. A DSP match opens one command turn;
 Android's recognizer endpointer closes it after 1.2 seconds of complete silence
 (700 ms when speech is probably complete). Because recognizer implementations may
-ignore those hints, the session also enforces a 10-second hard cutoff. Detection is
-not re-armed while AgentOS speaks, preventing its own TTS response from becoming a
-new command.
+ignore those hints, the session also enforces a 10-second hard cutoff. Detection
+re-arms after command capture. Saying `Hey AgentOS` during planning or TTS sends a
+signature-protected interrupt, cancels the active turn, stops speech, and opens a
+new command session. Target hardware must use echo cancellation and keyphrase
+calibration so speaker output does not wake the detector itself.
 
 The service uses only on-device speech recognition. If an image has no on-device
 recognition provider, the voice turn fails closed and re-arms the keyphrase; text

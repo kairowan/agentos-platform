@@ -33,6 +33,7 @@
             android:permission="com.agentos.permission.DELIVER_VOICE_COMMAND">
             <intent-filter>
                 <action android:name="com.agentos.shell.action.DELIVER_VOICE_COMMAND" />
+                <action android:name="com.agentos.shell.action.INTERRUPT_VOICE_OUTPUT" />
             </intent-filter>
         </receiver>
     </application>

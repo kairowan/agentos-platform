@@ -25,4 +25,13 @@ class VoiceCommandPolicyTest {
         assertEquals("打开设置", VoiceCommandInbox.take(token))
         assertNull(VoiceCommandInbox.take(token))
     }
+
+    @Test
+    fun interruptTicketIsUnforgeableAndOneTime() {
+        val token = VoiceInterruptInbox.offer()
+
+        assertEquals(false, VoiceInterruptInbox.take("wrong-token"))
+        assertEquals(true, VoiceInterruptInbox.take(token))
+        assertEquals(false, VoiceInterruptInbox.take(token))
+    }
 }

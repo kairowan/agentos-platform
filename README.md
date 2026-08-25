@@ -34,6 +34,11 @@ DSP verification to an isolated `HotwordDetectionService`, opens one on-device
 speech-recognition turn, and closes it automatically on silence. Delivery to the
 Shell uses a signature permission plus a one-time command ticket.
 
+The same hotword can interrupt an active plan or spoken response. AgentShell also
+keeps a bounded, deletable local task history and renders its newest source-backed
+`goal -> result` nodes as a simple knowledge view; it does not silently turn model
+inferences or incoming notifications into durable personal facts.
+
 This source boundary is buildable only inside AOSP; the standalone Gradle build
 continues to cover the Shell, Broker, and their unit tests. Real always-on wake-up
 also requires a target device with a SoundTrigger DSP and an enrolled keyphrase
@@ -101,6 +106,7 @@ user-controlled Android setting.
 - [Generated UI](docs/generated-ui.md)
 - [Demo flow](docs/demo.md)
 - [Voice and message events](docs/voice-and-events.md)
+- [Conversation history and knowledge view](docs/history-and-knowledge.md)
 - [ADR: system hotword boundary](docs/adr/0001-system-hotword-boundary.md)
 
 ## License
