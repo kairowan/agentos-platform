@@ -7,6 +7,8 @@ Buildable AgentOS product code for AOSP 17. The
 [`agentos`](https://github.com/kairowan/agentos) bootstrap checks this repository
 out at `vendor/agentos` inside the AOSP source tree.
 
+![AgentOS v0.2.1 running on an Android emulator](https://github.com/kairowan/agentos-platform/releases/download/v0.2.1/AgentShell-home.png)
+
 ## v0.2 baseline
 
 - Kotlin and Jetpack Compose HOME activity
@@ -39,7 +41,7 @@ apps/AgentShell/build/outputs/apk/debug/AgentShell-debug.apk
 
 GitHub Actions runs the same test and build for every commit and pull request.
 Current APKs are available from
-[GitHub Releases](https://github.com/kairowan/agentos-platform/releases).
+[the v0.2.1 pre-release](https://github.com/kairowan/agentos-platform/releases/tag/v0.2.1).
 Version tags are rebuilt by a separate release workflow, which publishes both the
 APK and its SHA-256 checksum from the tagged commit.
 
