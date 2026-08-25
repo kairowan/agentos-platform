@@ -11,7 +11,7 @@ data class GeneratedScreen(
         fun welcome() = GeneratedScreen(
             title = "系统已就绪",
             blocks = listOf(
-                UiBlock.Paragraph("当前是 AgentOS v0.2 的本地安全模式。你可以使用离线能力，也可以临时连接兼容模型。"),
+                UiBlock.Paragraph("当前是 AgentOS v0.3 的本地安全模式。系统能力由独立 Broker 服务执行。"),
                 UiBlock.Action("查看当前时间", "现在几点"),
                 UiBlock.Action("查看设备状态", "查看设备状态"),
                 UiBlock.Action("查看存储状态", "查看存储状态"),

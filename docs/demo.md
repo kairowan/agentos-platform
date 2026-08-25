@@ -1,8 +1,9 @@
-# v0.2 demo
+# v0.3 demo
 
-Install the APK from GitHub Releases, then select AgentOS as the HOME application.
+Install both APKs from GitHub Releases, service first, then select AgentOS as HOME.
 
 ```bash
+adb install -r AgentCapabilityService-debug.apk
 adb install -r AgentShell-debug.apk
 adb shell cmd package set-home-activity com.agentos.shell/.MainActivity
 ```
@@ -24,5 +25,5 @@ adb shell cmd package set-home-activity com.agentos.shell/.MainActivity
 
 This script is the source for the first public screen recording once an emulator or
 Cuttlefish host is available. The `Capture Demo` workflow boots a real Android 35
-emulator, installs the tagged APK, captures the HOME surface, and attaches the PNG
-to the corresponding GitHub release.
+emulator, installs both tagged APKs, invokes the time capability across Binder,
+captures the result, and attaches the PNG to the corresponding GitHub release.

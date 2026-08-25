@@ -6,7 +6,7 @@ on:
       tag:
         description: Release tag whose APK and screenshot should be reproduced
         required: true
-        default: v0.2.1
+        default: v0.3.0
 
 permissions:
   contents: write
@@ -68,10 +68,15 @@ jobs:
             cat /tmp/agentos-emulator.log
             exit 1
           fi
+          adb install -r services/AgentCapabilityService/build/outputs/apk/debug/AgentCapabilityService-debug.apk
           adb install -r apps/AgentShell/build/outputs/apk/debug/AgentShell-debug.apk
           adb shell input keyevent 82
           adb shell am start -W -n com.agentos.shell/.MainActivity
-          sleep 5
+          sleep 3
+          adb shell input tap 540 970
+          sleep 2
+          adb shell uiautomator dump /sdcard/agentos-window.xml
+          adb shell cat /sdcard/agentos-window.xml | grep -q '当前时间'
           mkdir -p demo
           adb exec-out screencap -p > demo/AgentShell-home.png
           file demo/AgentShell-home.png | grep -q 'PNG image data'

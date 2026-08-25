@@ -24,8 +24,10 @@ jobs:
       - name: Test and build tagged APK
         run: gradle --no-daemon testDebugUnitTest assembleDebug
       - name: Create checksum
-        working-directory: apps/AgentShell/build/outputs/apk/debug
-        run: sha256sum AgentShell-debug.apk > AgentShell-debug.apk.sha256
+        run: |
+          cp services/AgentCapabilityService/build/outputs/apk/debug/AgentCapabilityService-debug.apk .
+          cp apps/AgentShell/build/outputs/apk/debug/AgentShell-debug.apk .
+          sha256sum AgentCapabilityService-debug.apk AgentShell-debug.apk > AgentOS-debug-apks.sha256
       - name: Publish pre-release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -37,8 +39,8 @@ jobs:
             --generate-notes \
             --title "AgentOS $GITHUB_REF_NAME"
           gh release upload "$GITHUB_REF_NAME" \
-            apps/AgentShell/build/outputs/apk/debug/AgentShell-debug.apk \
-            apps/AgentShell/build/outputs/apk/debug/AgentShell-debug.apk.sha256 \
+            AgentCapabilityService-debug.apk \
+            AgentShell-debug.apk \
+            AgentOS-debug-apks.sha256 \
             --repo "$GITHUB_REPOSITORY" \
             --clobber
-

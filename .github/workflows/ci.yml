@@ -28,6 +28,8 @@ jobs:
         run: gradle --no-daemon testDebugUnitTest assembleDebug
       - uses: actions/upload-artifact@v7
         with:
-          name: AgentShell-debug
-          path: apps/AgentShell/build/outputs/apk/debug/AgentShell-debug.apk
+          name: AgentOS-debug-apks
+          path: |
+            apps/AgentShell/build/outputs/apk/debug/AgentShell-debug.apk
+            services/AgentCapabilityService/build/outputs/apk/debug/AgentCapabilityService-debug.apk
           if-no-files-found: error

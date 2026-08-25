@@ -9,10 +9,12 @@ out at `vendor/agentos` inside the AOSP source tree.
 
 ![AgentOS v0.2.1 running on an Android emulator](https://github.com/kairowan/agentos-platform/releases/download/v0.2.1/AgentShell-home.png)
 
-## v0.2 baseline
+## v0.3 baseline
 
 - Kotlin and Jetpack Compose HOME activity
 - Validated generated-interface data model and JSON Schema
+- Separate capability-service APK behind a typed AIDL interface
+- Signature permission, Binder caller checks, and SELinux domain policy
 - Capability Broker with risk classes, one-time confirmation, and bounded audit log
 - Time, device, private-storage, and confirmed Wi-Fi settings capabilities
 - Strict generated-UI JSON parser with size, field, type, and capability allowlists
@@ -21,9 +23,9 @@ out at `vendor/agentos` inside the AOSP source tree.
 - Lifecycle-aware state holder and JVM unit tests
 - Gradle build for daily development and Soong build for AOSP integration
 
-The model remains an unprivileged planner. It can select only registered capability
-IDs; the Broker independently decides whether the operation executes, is denied, or
-requires a trusted system confirmation.
+The model and shell remain outside the capability-service process. They can select
+only registered capability IDs; the Broker independently decides whether an operation
+executes, is denied, or requires trusted confirmation.
 
 ## Standalone build
 
@@ -33,10 +35,11 @@ Install JDK 17 and Android SDK 35, then use Gradle 8.12:
 gradle testDebugUnitTest assembleDebug
 ```
 
-The APK is written to:
+The two APKs are written to:
 
 ```text
 apps/AgentShell/build/outputs/apk/debug/AgentShell-debug.apk
+services/AgentCapabilityService/build/outputs/apk/debug/AgentCapabilityService-debug.apk
 ```
 
 GitHub Actions runs the same test and build for every commit and pull request.
@@ -60,9 +63,10 @@ Use `m` instead of `m AgentShell` to build the complete Cuttlefish image.
 ## Security boundary
 
 Agent output cannot invoke Android APIs directly. Every operation must resolve to
-a registered capability. The current capabilities are read-only and unknown goals
-are rejected. Privileged and write capabilities require the future Broker service,
-system-owned confirmation UI, auditing, quotas, and revocation.
+a registered capability. Unknown goals are rejected. The current service implements
+the process and caller-authentication boundary. Additional privileged or write
+capabilities still require scoped grants, quotas, revocation, persistent encrypted
+auditing, and complete AOSP SELinux validation.
 
 Remote model credentials are not persisted. Non-local endpoints must use HTTPS;
 cleartext HTTP is accepted only for `localhost`, `127.0.0.1`, and Android emulator

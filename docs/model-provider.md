@@ -1,6 +1,6 @@
 # Model provider
 
-AgentOS v0.2 can use an OpenAI-compatible chat-completions endpoint as an optional,
+AgentOS can use an OpenAI-compatible chat-completions endpoint as an optional,
 unprivileged planner.
 
 In the shell, open **模型连接**, enter:
@@ -21,4 +21,3 @@ The response must be a single generated-UI v1 JSON object. Fenced Markdown, unkn
 fields, unknown capabilities, invalid blocks, oversized content, non-success HTTP
 responses, and timeouts are rejected. AgentOS then returns to its deterministic local
 planner instead of giving the response additional authority.
-

@@ -14,8 +14,17 @@ be reused. Exceptions become generic failures so implementation details do not l
 into model context. Every decision is appended to a bounded audit log without prompt
 text, model output, arguments, or API credentials.
 
-The v0.2 Broker is in-process so the policy can be exercised on ordinary Android and
-free CI. Its public contract and tests are the migration point for the future AIDL
-service running outside the model process. The AIDL migration remains open because it
-must be tested in a complete AOSP build with SELinux domains.
+## Process boundary
 
+Starting with v0.3, `AgentShell` and `AgentCapabilityService` are separate APKs,
+processes, UIDs, and proposed SELinux domains. The shell has no capability
+implementation and talks only through `IAgentCapabilityService`.
+
+The service is protected by a signature permission and then independently checks the
+Binder calling UID. Authorization succeeds only when that UID maps to exactly
+`com.agentos.shell` and its signing certificate matches the service. Unknown package,
+signature mismatch, and shared-UID ambiguity fail closed in runnable JVM tests.
+
+The policy in `sepolicy/private` assigns the two packages separate domains and grants
+only Binder communication between them. Full policy compilation and denial-log
+verification remain gated on the first complete AOSP image build.
