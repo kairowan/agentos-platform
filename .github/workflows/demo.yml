@@ -38,7 +38,9 @@ jobs:
             --package "system-images;android-35;google_apis;x86_64" \
             --device pixel_6
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
-          nohup emulator \
+      - name: Capture real shell screenshot
+        run: |
+          emulator \
             -avd agentos-demo \
             -no-window \
             -noaudio \
@@ -46,17 +48,21 @@ jobs:
             -no-snapshot \
             -gpu swiftshader_indirect \
             >/tmp/agentos-emulator.log 2>&1 &
-      - name: Capture real shell screenshot
-        run: |
-          adb wait-for-device
-          for attempt in $(seq 1 120); do
+          emulator_pid=$!
+          trap 'kill "$emulator_pid" 2>/dev/null || true' EXIT
+          if ! timeout 180 adb wait-for-device; then
+            cat /tmp/agentos-emulator.log
+            exit 1
+          fi
+          for attempt in $(seq 1 60); do
             if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then
               break
             fi
-            sleep 5
+            sleep 3
           done
           test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
           adb install -r apps/AgentShell/build/outputs/apk/debug/AgentShell-debug.apk
+          adb shell input keyevent 82
           adb shell am start -W -n com.agentos.shell/.MainActivity
           sleep 5
           mkdir -p demo
@@ -67,8 +73,13 @@ jobs:
           name: AgentShell-demo
           path: demo/AgentShell-home.png
           if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: AgentShell-emulator-log
+          path: /tmp/agentos-emulator.log
+          if-no-files-found: warn
       - name: Attach screenshot to release
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${{ inputs.tag }}" demo/AgentShell-home.png --clobber
-
