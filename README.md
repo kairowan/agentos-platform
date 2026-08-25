@@ -7,17 +7,21 @@ Buildable AgentOS product code for AOSP 17. The
 [`agentos`](https://github.com/kairowan/agentos) bootstrap checks this repository
 out at `vendor/agentos` inside the AOSP source tree.
 
-## v0.1 baseline
+## v0.2 baseline
 
 - Kotlin and Jetpack Compose HOME activity
 - Validated generated-interface data model and JSON Schema
-- Explicit capability registry with time, device, and private-storage readers
-- Deterministic local agent router with safe handling of unknown goals
+- Capability Broker with risk classes, one-time confirmation, and bounded audit log
+- Time, device, private-storage, and confirmed Wi-Fi settings capabilities
+- Strict generated-UI JSON parser with size, field, type, and capability allowlists
+- Optional OpenAI-compatible planner with HTTPS policy and in-memory credentials
+- Deterministic local planner and automatic fail-safe model fallback
 - Lifecycle-aware state holder and JVM unit tests
 - Gradle build for daily development and Soong build for AOSP integration
 
-The local router is intentionally not an LLM. A model planner will be added only
-after the capability policy and confirmation boundary exists.
+The model remains an unprivileged planner. It can select only registered capability
+IDs; the Broker independently decides whether the operation executes, is denied, or
+requires a trusted system confirmation.
 
 ## Standalone build
 
@@ -34,8 +38,8 @@ apps/AgentShell/build/outputs/apk/debug/AgentShell-debug.apk
 ```
 
 GitHub Actions runs the same test and build for every commit and pull request.
-The current APK is also available from the
-[`v0.1.0` pre-release](https://github.com/kairowan/agentos-platform/releases/tag/v0.1.0).
+Current APKs are available from
+[GitHub Releases](https://github.com/kairowan/agentos-platform/releases).
 
 ## AOSP build
 
@@ -55,6 +59,18 @@ Agent output cannot invoke Android APIs directly. Every operation must resolve t
 a registered capability. The current capabilities are read-only and unknown goals
 are rejected. Privileged and write capabilities require the future Broker service,
 system-owned confirmation UI, auditing, quotas, and revocation.
+
+Remote model credentials are not persisted. Non-local endpoints must use HTTPS;
+cleartext HTTP is accepted only for `localhost`, `127.0.0.1`, and Android emulator
+host address `10.0.2.2`. Prompts are sent to the configured provider when remote
+mode is enabled.
+
+## Documentation
+
+- [Capability Broker](docs/capability-broker.md)
+- [Model provider](docs/model-provider.md)
+- [Generated UI](docs/generated-ui.md)
+- [Demo flow](docs/demo.md)
 
 ## License
 

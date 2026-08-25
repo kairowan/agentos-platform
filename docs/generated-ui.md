@@ -13,7 +13,8 @@ Unknown fields and block types are rejected. Text lengths and total block count 
 bounded by the schema. An action contains a prompt, not an Android Intent or Binder
 handle, so it re-enters policy evaluation before anything executes.
 
-The Kotlin renderer currently consumes the equivalent typed model directly. JSON
-deserialization will be introduced with schema validation at the model-process IPC
-boundary, where untrusted data first enters the trusted shell.
+The optional root `capability` field accepts only a registered capability wire ID.
+`GeneratedUiParser` performs the same checks at runtime before model output becomes
+a typed `AgentPlan`. Unknown fields, capabilities, oversized payloads, and malformed
+blocks fail closed and trigger the offline fallback planner.
 
