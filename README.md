@@ -40,6 +40,8 @@ apps/AgentShell/build/outputs/apk/debug/AgentShell-debug.apk
 GitHub Actions runs the same test and build for every commit and pull request.
 Current APKs are available from
 [GitHub Releases](https://github.com/kairowan/agentos-platform/releases).
+Version tags are rebuilt by a separate release workflow, which publishes both the
+APK and its SHA-256 checksum from the tagged commit.
 
 ## AOSP build
 
