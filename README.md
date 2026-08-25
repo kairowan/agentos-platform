@@ -1,5 +1,8 @@
 # AgentOS Platform
 
+[![CI](https://github.com/kairowan/agentos-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/kairowan/agentos-platform/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/kairowan/agentos-platform?include_prereleases)](https://github.com/kairowan/agentos-platform/releases)
+
 Buildable AgentOS product code for AOSP 17. The
 [`agentos`](https://github.com/kairowan/agentos) bootstrap checks this repository
 out at `vendor/agentos` inside the AOSP source tree.
@@ -31,6 +34,8 @@ apps/AgentShell/build/outputs/apk/debug/AgentShell-debug.apk
 ```
 
 GitHub Actions runs the same test and build for every commit and pull request.
+The current APK is also available from the
+[`v0.1.0` pre-release](https://github.com/kairowan/agentos-platform/releases/tag/v0.1.0).
 
 ## AOSP build
 
@@ -54,4 +59,3 @@ system-owned confirmation UI, auditing, quotas, and revocation.
 ## License
 
 Apache License 2.0.
-
