@@ -1,5 +1,6 @@
 android_app {
     name: "AgentShell",
+    package_name: "com.agentos.shell",
     srcs: ["src/**/*.kt"],
     manifest: "AndroidManifest.xml",
     resource_dirs: ["res"],

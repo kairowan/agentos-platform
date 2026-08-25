@@ -50,7 +50,10 @@ class GeneratedUiParser {
     }
 
     private fun JSONObject.requireOnly(allowed: Set<String>) {
-        require(keySet().all(allowed::contains)) { "Generated UI contains unknown fields" }
+        val names = keys()
+        while (names.hasNext()) {
+            require(names.next() in allowed) { "Generated UI contains unknown fields" }
+        }
     }
 
     private fun JSONObject.requiredBoundedString(name: String, maxLength: Int): String =
