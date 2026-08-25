@@ -12,5 +12,14 @@
             android:name=".service.AgentCapabilityService"
             android:exported="true"
             android:permission="com.agentos.permission.USE_CAPABILITY_BROKER" />
+        <service
+            android:name=".service.AgentNotificationListenerService"
+            android:exported="true"
+            android:label="AgentOS 消息通知"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>

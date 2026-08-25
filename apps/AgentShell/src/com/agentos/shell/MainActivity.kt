@@ -1,8 +1,13 @@
 package com.agentos.shell
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.provider.Settings
 import com.agentos.capability.core.ApprovalRequest
 import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,8 +51,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 class MainActivity : ComponentActivity() {
+    private var voiceInput: VoiceInputController? = null
+    private var voiceOutput: VoiceOutputController? = null
     private val viewModel by lazy {
         ViewModelProvider(this, AgentShellViewModel.factory(applicationContext))[AgentShellViewModel::class.java]
+    }
+    private val requestMicrophone = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) startVoiceInput() else viewModel.onVoiceError("需要麦克风权限才能使用语音")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,6 +65,12 @@ class MainActivity : ComponentActivity() {
         setContent {
             AgentOsTheme {
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
+                LaunchedEffect(state.voiceReply) {
+                    state.voiceReply?.let {
+                        (voiceOutput ?: VoiceOutputController(applicationContext).also { voiceOutput = it }).speak(it)
+                        viewModel.consumeVoiceReply()
+                    }
+                }
                 AgentShellContent(
                     state = state,
                     onPromptChanged = viewModel::updatePrompt,
@@ -66,9 +83,39 @@ class MainActivity : ComponentActivity() {
                     onModelApiKeyChanged = viewModel::updateModelApiKey,
                     onApprove = viewModel::approve,
                     onDeny = viewModel::deny,
+                    onVoice = ::toggleVoiceInput,
+                    onNotificationAccess = {
+                        startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                    },
                 )
             }
         }
+    }
+
+    private fun toggleVoiceInput() {
+        if (viewModel.uiState.value.isListening) {
+            voiceInput?.stop()
+        } else if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            startVoiceInput()
+        } else {
+            requestMicrophone.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    private fun startVoiceInput() {
+        val controller = voiceInput ?: VoiceInputController(
+            applicationContext,
+            onResult = viewModel::submitVoice,
+            onListening = viewModel::onVoiceListeningChanged,
+            onError = viewModel::onVoiceError,
+        ).also { voiceInput = it }
+        controller.start()
+    }
+
+    override fun onDestroy() {
+        voiceInput?.close()
+        voiceOutput?.close()
+        super.onDestroy()
     }
 }
 
@@ -85,6 +132,8 @@ internal fun AgentShellContent(
     onModelApiKeyChanged: (String) -> Unit,
     onApprove: () -> Unit,
     onDeny: () -> Unit,
+    onVoice: () -> Unit,
+    onNotificationAccess: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
@@ -97,8 +146,10 @@ internal fun AgentShellContent(
             Header(state.useRemoteModel)
             ModelSettings(state, onToggleModelSettings, onRemoteModelEnabled,
                 onModelEndpointChanged, onModelNameChanged, onModelApiKeyChanged)
+            VoiceCard(state, onVoice)
 
             state.notice?.let { NoticeCard(it) }
+            NotificationInbox(state, onNotificationAccess)
             GeneratedScreenView(state.screen, onSuggestion)
             state.approval?.let { ApprovalCard(it, onApprove, onDeny) }
 
@@ -131,6 +182,68 @@ internal fun AgentShellContent(
                         Text("智能体正在规划")
                     } else {
                         Text("交给智能体")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VoiceCard(state: AgentUiState, onVoice: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (state.isListening) Color(0xFF17332D) else MaterialTheme.colorScheme.surface,
+        ),
+        shape = RoundedCornerShape(24.dp),
+    ) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("语音智能体", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(state.voiceStatus, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Button(
+                onClick = onVoice,
+                enabled = !state.isWorking && state.approval == null,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(if (state.isListening) "停止聆听" else "按住体验 · 点击说话")
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificationInbox(state: AgentUiState, onNotificationAccess: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(20.dp),
+    ) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text("消息事件", fontWeight = FontWeight.Bold)
+                    Text("由 Broker 本地过滤，不会自动上传", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                TextButton(onClick = onNotificationAccess) { Text("授权") }
+            }
+            if (state.notifications.isEmpty()) {
+                Text("授权后，社交软件的消息类通知会推送到这里。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                state.notifications.forEach { event ->
+                    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(14.dp)) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                            Text(event.sender, fontWeight = FontWeight.SemiBold)
+                            Text(event.text, maxLines = 3)
+                            Text(event.packageName, style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             }

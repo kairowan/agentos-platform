@@ -5,9 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
+import com.agentos.capability.api.AgentNotificationEvent
 import com.agentos.capability.api.CapabilityContract
 import com.agentos.capability.api.CapabilityReply
 import com.agentos.capability.api.IAgentCapabilityService
+import com.agentos.capability.api.IAgentEventListener
 import com.agentos.capability.core.ApprovalRequest
 import com.agentos.capability.core.BrokerOutcome
 import com.agentos.capability.core.CapabilityBroker
@@ -17,16 +19,23 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
 interface CapabilityGateway {
+    val notificationEvents: Flow<AgentNotificationEvent>
     suspend fun request(id: CapabilityId): BrokerOutcome
     suspend fun approve(token: String): BrokerOutcome
     suspend fun deny(token: String): BrokerOutcome
+    fun close() = Unit
 }
 
 class LocalCapabilityGateway(private val broker: CapabilityBroker) : CapabilityGateway {
+    override val notificationEvents: Flow<AgentNotificationEvent> = emptyFlow()
     override suspend fun request(id: CapabilityId) = broker.request(id)
     override suspend fun approve(token: String) = broker.approve(token)
     override suspend fun deny(token: String) = broker.deny(token)
@@ -35,23 +44,46 @@ class LocalCapabilityGateway(private val broker: CapabilityBroker) : CapabilityG
 class AgentCapabilityClient(context: Context) : CapabilityGateway {
     private val applicationContext = context.applicationContext
     private val remote = CompletableDeferred<IAgentCapabilityService>()
+    private val mutableNotificationEvents = MutableSharedFlow<AgentNotificationEvent>(
+        extraBufferCapacity = 16,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    override val notificationEvents: Flow<AgentNotificationEvent> = mutableNotificationEvents
+    @Volatile private var connectedService: IAgentCapabilityService? = null
+
+    private val eventListener = object : IAgentEventListener.Stub() {
+        override fun onNotificationEvent(event: AgentNotificationEvent) {
+            mutableNotificationEvents.tryEmit(event)
+        }
+    }
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, binder: IBinder) {
-            remote.complete(IAgentCapabilityService.Stub.asInterface(binder))
+            val service = IAgentCapabilityService.Stub.asInterface(binder)
+            try {
+                service.registerEventListener(eventListener)
+                connectedService = service
+                remote.complete(service)
+            } catch (error: Exception) {
+                remote.completeExceptionally(error)
+            }
         }
 
-        override fun onServiceDisconnected(name: ComponentName) = Unit
+        override fun onServiceDisconnected(name: ComponentName) {
+            connectedService = null
+        }
     }
 
-    init {
+    private val isBound = run {
         // ponytail: One process-lifetime binding is enough for the single HOME
         // client. Add reconnect/backoff when more clients or service upgrades exist.
         val intent = Intent().setComponent(
             ComponentName(CapabilityContract.SERVICE_PACKAGE, CapabilityContract.SERVICE_CLASS),
         )
-        if (!applicationContext.bindService(intent, connection, Context.BIND_AUTO_CREATE)) {
-            remote.completeExceptionally(IllegalStateException("Capability Service is unavailable"))
+        applicationContext.bindService(intent, connection, Context.BIND_AUTO_CREATE).also { bound ->
+            if (!bound) {
+                remote.completeExceptionally(IllegalStateException("Capability Service is unavailable"))
+            }
         }
     }
 
@@ -61,6 +93,11 @@ class AgentCapabilityClient(context: Context) : CapabilityGateway {
     override suspend fun approve(token: String): BrokerOutcome = call { it.approve(token) }
 
     override suspend fun deny(token: String): BrokerOutcome = call { it.deny(token) }
+
+    override fun close() {
+        connectedService?.let { runCatching { it.unregisterEventListener(eventListener) } }
+        if (isBound) runCatching { applicationContext.unbindService(connection) }
+    }
 
     private suspend fun call(block: (IAgentCapabilityService) -> CapabilityReply): BrokerOutcome =
         try {

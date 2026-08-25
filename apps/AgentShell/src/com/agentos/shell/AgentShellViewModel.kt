@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.agentos.capability.api.AgentNotificationEvent
 import com.agentos.capability.core.ApprovalRequest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -24,6 +25,10 @@ data class AgentUiState(
     val modelEndpoint: String = "",
     val modelName: String = "",
     val modelApiKey: String = "",
+    val isListening: Boolean = false,
+    val voiceStatus: String = "点击后说出目标",
+    val voiceReply: String? = null,
+    val notifications: List<AgentNotificationEvent> = emptyList(),
 ) {
     override fun toString(): String =
         "AgentUiState(promptLength=${prompt.length}, screen=${screen.title}, " +
@@ -31,11 +36,22 @@ data class AgentUiState(
             "modelEndpoint=$modelEndpoint, modelName=$modelName, modelApiKey=<redacted>)"
 }
 class AgentShellViewModel internal constructor(
-    private val runtime: AgentRuntime,
+    private val gateway: CapabilityGateway,
 ) : ViewModel() {
+    private val runtime = AgentRuntime(gateway)
     private val mutableUiState = MutableStateFlow(AgentUiState())
     val uiState: StateFlow<AgentUiState> = mutableUiState.asStateFlow()
     private var activeTurn: Job? = null
+
+    init {
+        viewModelScope.launch {
+            gateway.notificationEvents.collect { event ->
+                mutableUiState.update {
+                    it.copy(notifications = (listOf(event) + it.notifications).take(MAX_NOTIFICATIONS))
+                }
+            }
+        }
+    }
 
     fun updatePrompt(value: String) {
         mutableUiState.update { it.copy(prompt = value.take(8_000)) }
@@ -65,7 +81,28 @@ class AgentShellViewModel internal constructor(
         submit(mutableUiState.value.prompt)
     }
 
-    fun submit(prompt: String) {
+    fun submit(prompt: String) = submit(prompt, fromVoice = false)
+
+    fun submitVoice(prompt: String) {
+        mutableUiState.update { it.copy(isListening = false, voiceStatus = "已识别：${prompt.take(80)}") }
+        submit(prompt, fromVoice = true)
+    }
+
+    fun onVoiceListeningChanged(listening: Boolean) {
+        mutableUiState.update {
+            it.copy(isListening = listening, voiceStatus = if (listening) "正在聆听…" else "点击后说出目标")
+        }
+    }
+
+    fun onVoiceError(message: String) {
+        mutableUiState.update { it.copy(isListening = false, voiceStatus = message) }
+    }
+
+    fun consumeVoiceReply() {
+        mutableUiState.update { it.copy(voiceReply = null) }
+    }
+
+    private fun submit(prompt: String, fromVoice: Boolean) {
         if (prompt.isBlank()) return
         activeTurn?.cancel()
         activeTurn = viewModelScope.launch {
@@ -81,6 +118,7 @@ class AgentShellViewModel internal constructor(
                         approval = turn.approval,
                         notice = turn.notice,
                         isWorking = false,
+                        voiceReply = if (fromVoice) turn.toSpeechText() else null,
                     )
                 }
             } catch (cancelled: CancellationException) {
@@ -128,13 +166,30 @@ class AgentShellViewModel internal constructor(
         return ModelConfig(state.modelEndpoint.trim(), state.modelName.trim(), state.modelApiKey)
     }
 
+    override fun onCleared() {
+        gateway.close()
+    }
+
     companion object {
         fun factory(context: Context) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 require(modelClass == AgentShellViewModel::class.java)
-                return AgentShellViewModel(AgentRuntime(AgentCapabilityClient(context))) as T
+                return AgentShellViewModel(AgentCapabilityClient(context)) as T
             }
         }
+
+        private const val MAX_NOTIFICATIONS = 5
     }
 }
+
+private fun AgentTurn.toSpeechText(): String = buildString {
+    append(screen.title)
+    screen.blocks.take(4).forEach { block ->
+        when (block) {
+            is UiBlock.Fact -> append("。${block.label}，${block.value}")
+            is UiBlock.Paragraph -> append("。${block.text}")
+            is UiBlock.Action -> Unit
+        }
+    }
+}.take(500)

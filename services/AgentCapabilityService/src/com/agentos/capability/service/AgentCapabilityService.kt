@@ -8,6 +8,7 @@ import android.os.IBinder
 import com.agentos.capability.api.CapabilityContract
 import com.agentos.capability.api.CapabilityReply
 import com.agentos.capability.api.IAgentCapabilityService
+import com.agentos.capability.api.IAgentEventListener
 import com.agentos.capability.core.ApprovalRequest
 import com.agentos.capability.core.BrokerOutcome
 import com.agentos.capability.core.CapabilityBroker
@@ -58,6 +59,16 @@ class AgentCapabilityService : Service() {
             } else {
                 denied("确认请求已失效")
             }
+        }
+
+        override fun registerEventListener(listener: IAgentEventListener) {
+            enforceAuthorizedCaller()
+            AgentEventBus.register(listener)
+        }
+
+        override fun unregisterEventListener(listener: IAgentEventListener) {
+            enforceAuthorizedCaller()
+            AgentEventBus.unregister(listener)
         }
     }
 
