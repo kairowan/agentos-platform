@@ -6,3 +6,4 @@ type agent_shell_data_file, file_type, data_file_type, core_data_file_type, app_
 # The shell can call only the dedicated Broker process. No device, sysfs, or
 # privileged service permissions are granted to this domain here.
 binder_call(agent_shell, agent_capability_service)
+binder_call(agent_shell, agent_media_service)

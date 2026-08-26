@@ -1,0 +1,10 @@
+type agent_media_service, domain;
+app_domain(agent_media_service)
+
+type agent_media_service_data_file, file_type, data_file_type, core_data_file_type, app_data_file_type;
+
+# Media access remains behind framework permission checks and the platform camera,
+# audio, codec, and MediaStore services. Binder callbacks return only to AgentShell.
+binder_call(agent_media_service, agent_shell)
+binder_call(agent_media_service, system_server)
+binder_call(system_server, agent_media_service)

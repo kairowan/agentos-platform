@@ -1,0 +1,21 @@
+android_app {
+    name: "AgentMediaService",
+    package_name: "com.agentos.media",
+    srcs: ["src/**/*.kt"],
+    manifest: "AndroidManifest.xml",
+    static_libs: ["AgentCapabilityApi"],
+    certificate: "platform",
+    privileged: true,
+    product_specific: true,
+    platform_apis: true,
+    kotlincflags: ["-Xjvm-default=all"],
+    required: ["default-permissions-com.agentos.media"],
+}
+
+prebuilt_etc {
+    name: "default-permissions-com.agentos.media",
+    src: "permissions/default-permissions-com.agentos.media.xml",
+    filename_from_src: true,
+    sub_dir: "default-permissions",
+    product_specific: true,
+}

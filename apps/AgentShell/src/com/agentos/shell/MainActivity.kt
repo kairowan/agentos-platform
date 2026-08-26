@@ -2,6 +2,7 @@ package com.agentos.shell
 
 import android.content.ComponentName
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import com.agentos.capability.core.ApprovalRequest
@@ -59,11 +60,15 @@ class MainActivity : ComponentActivity() {
     private val viewModel by lazy {
         ViewModelProvider(this, AgentShellViewModel.factory(applicationContext))[AgentShellViewModel::class.java]
     }
+    private val mediaViewModel by lazy {
+        ViewModelProvider(this, MediaWorkspaceViewModel.factory(applicationContext))[MediaWorkspaceViewModel::class.java]
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             AgentOsTheme {
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
+                val mediaState by mediaViewModel.state.collectAsStateWithLifecycle()
                 LaunchedEffect(state.voiceReply) {
                     state.voiceReply?.let {
                         (voiceOutput ?: VoiceOutputController(applicationContext, ::rearmHotword)
@@ -71,7 +76,27 @@ class MainActivity : ComponentActivity() {
                         viewModel.consumeVoiceReply()
                     }
                 }
-                AgentShellContent(
+                if (mediaState.mode != MediaWorkspaceMode.CLOSED) {
+                    MediaWorkspace(
+                        state = mediaState,
+                        onClose = mediaViewModel::closeWorkspace,
+                        onAttachSurface = mediaViewModel::attachCameraSurface,
+                        onDetachSurface = mediaViewModel::detachCameraSurface,
+                        onSwitchCamera = mediaViewModel::switchCamera,
+                        onZoom = mediaViewModel::setZoom,
+                        onCapturePhoto = mediaViewModel::capturePhoto,
+                        onToggleVideo = mediaViewModel::toggleVideo,
+                        onToggleAudio = mediaViewModel::toggleAudio,
+                        onToggleAudioPause = mediaViewModel::toggleAudioPause,
+                        onRefreshGallery = mediaViewModel::refreshGallery,
+                        onOpenItem = { item ->
+                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(item.uri)).apply {
+                                setDataAndType(Uri.parse(item.uri), item.mimeType)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            })
+                        },
+                    )
+                } else AgentShellContent(
                     state = state,
                     onPromptChanged = viewModel::updatePrompt,
                     onSubmit = viewModel::submit,
@@ -92,6 +117,7 @@ class MainActivity : ComponentActivity() {
                     onMoveKnowledgeEntity = viewModel::moveKnowledgeEntity,
                     onEditKnowledgeRelation = viewModel::editKnowledgeRelation,
                     onRemoveKnowledgeRelation = viewModel::removeKnowledgeRelation,
+                    onOpenMedia = mediaViewModel::open,
                     onNotificationAccess = {
                         startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                     },
@@ -161,6 +187,7 @@ internal fun AgentShellContent(
     onMoveKnowledgeEntity: (String, Float, Float) -> Unit,
     onEditKnowledgeRelation: (String, String, String, String) -> Unit,
     onRemoveKnowledgeRelation: (String) -> Unit,
+    onOpenMedia: (MediaWorkspaceMode) -> Unit,
     onNotificationAccess: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -180,6 +207,7 @@ internal fun AgentShellContent(
                 onModelEndpointChanged, onModelNameChanged, onModelApiKeyChanged)
             VoiceCard(state, onVoiceSettings)
             HistoryMindMap(state, onToggleHistory)
+            MediaCard(onOpenMedia)
 
             state.notice?.let { NoticeCard(it) }
             NotificationInbox(state, onNotificationAccess)
@@ -272,6 +300,27 @@ private fun HistoryMindMap(
                     )
                 }
                 TextButton(onClick = onToggle) { Text(if (state.showHistory) "收起" else "查看") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MediaCard(onOpenMedia: (MediaWorkspaceMode) -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(20.dp),
+    ) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("原生媒体工作区", style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold)
+            Text("Camera HAL、MediaStore 与系统录音链路",
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { onOpenMedia(MediaWorkspaceMode.CAMERA) }) { Text("相机") }
+                Button(onClick = { onOpenMedia(MediaWorkspaceMode.GALLERY) }) { Text("图库") }
+                Button(onClick = { onOpenMedia(MediaWorkspaceMode.RECORDER) }) { Text("录音") }
             }
         }
     }

@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="com.agentos.permission.USE_CAPABILITY_BROKER" />
+    <uses-permission android:name="com.agentos.permission.USE_MEDIA_SERVICE" />
     <permission
         android:name="com.agentos.permission.DELIVER_VOICE_COMMAND"
         android:protectionLevel="signature" />

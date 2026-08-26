@@ -9,6 +9,7 @@ PRODUCT_MANUFACTURER := AgentOS
 PRODUCT_PACKAGES += \
     AgentShell \
     AgentCapabilityService \
+    AgentMediaService \
     AgentVoiceService
 
 PRODUCT_PACKAGE_OVERLAYS += vendor/agentos/overlay
