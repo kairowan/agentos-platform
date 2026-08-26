@@ -23,11 +23,20 @@ State remains in existing `StateFlow` ViewModels. Composables receive immutable
 state snapshots and event callbacks; they do not bind services, perform storage,
 or execute privileged actions during composition.
 
-## Current visual baseline
+## Runtime-derived avatar baseline
 
-These high-fidelity mockups are synchronized with the current Kotlin/Compose and OpenGL ES
-structure and design tokens. They are product-design references, not emulator or
-device screenshots. Runtime verification must still be performed on an AOSP build.
+The following frame is rendered from AgentShell's production fragment shader by the
+checked-in WebGL/GLES preview harness. It is not AI-generated and is never loaded as a
+texture by the app. It is the source of truth for the character material and effects;
+real Android GPU validation is still required.
+
+![AgentOS production thought-field shader](images/ui-v2/thought-field-runtime-v1.png)
+
+## Compose layout references
+
+These mockups describe placement, typography, and interaction hierarchy only. Their
+avatar pixels are not implementation evidence and must not override the runtime-derived
+shader baseline above.
 
 | Agent home | Character studio |
 | --- | --- |
@@ -39,5 +48,5 @@ device screenshots. Runtime verification must still be performed on an AOSP buil
 
 ![AgentOS knowledge graph screen](images/ui-v2/knowledge-v2.png)
 
-The source prompts, update contract, and verification scope are recorded in
+The shader capture command, source prompts, update contract, and verification scope are recorded in
 [`images/ui-v2/README.md`](images/ui-v2/README.md).

@@ -1,16 +1,19 @@
 # AgentOS UI visual baseline
 
-This directory contains generated high-fidelity product mockups aligned with the
-native Kotlin/Compose UI. They are not screenshots from an emulator or physical
-device. Their purpose is to keep implementation, product review, and documentation
-focused on one visible target while the full AOSP image is being built.
+This directory contains one renderer-derived character capture plus generated
+high-fidelity layout mockups. The mockups are not screenshots from an emulator or
+physical device. The shader capture is generated from executable renderer code and
+is never used as an app texture.
 
 ## Screens
 
-- `home-v7.png`: current full-screen home with the deforming AgentOS Thought Field;
+- `thought-field-runtime-v1.png`: deterministic output from the production GLES/WebGL
+  fragment shader at the fixed speaking/waving preview state; this is the only current
+  character image generated directly by executable renderer code;
+- `home-v7.png`: full-screen Compose layout mockup containing the Thought Field concept;
 - `home-v6.png`: previous split-seed native-form home;
 - `home-v4.png`: previous card-based 3D avatar home;
-- `character-studio-v6.png`: current studio with thought-field shaping controls;
+- `character-studio-v6.png`: Character Studio layout mockup with thought-field controls;
 - `character-studio-v5.png`: previous split-seed native-form studio;
 - `character-studio-v4.png`: previous human character studio baseline;
 - `home-v3.png` and `character-studio-v3.png`: previous 2D character baseline;
@@ -19,9 +22,22 @@ focused on one visible target while the full AOSP image is being built.
 - `camera-v2.png`: native Camera2 photo/video surface and privacy indicators;
 - `knowledge-v2.png`: complete, editable, pan-and-zoom semantic knowledge graph.
 
-## Generation mode and prompt contract
+## Runtime shader capture
 
-All images were generated with the built-in image generator. New screens use
+The character baseline is not made with an image generator. From the repository root:
+
+```bash
+scripts/capture-thought-field-preview.sh
+```
+
+The capture page loads `apps/AgentShell/res/raw/thought_field_fragment.glsl`, which is
+the exact fragment source compiled by AgentShell. It supplies a fixed resolution,
+time, speaking expression, wave gesture, gaze, and normalized shaping values, then
+captures WebGL 1 output. The app never reads the resulting PNG.
+
+## Layout-mockup generation mode and prompt contract
+
+Layout mockups were generated with the built-in image generator. New screens use
 `ui-mockup`; versioned updates that preserve an existing layout use
 `precise-object-edit`.
 The shared prompt requires a straight-on 9:20 Android screen, no hardware frame,
@@ -50,9 +66,10 @@ Screen-specific prompts require:
 
 ## Update contract
 
-When any tracked UI source changes, update the affected mockup (or replace it with
-an emulator screenshot), review the current five-screen set for consistency, then refresh
-`ui-preview.sha256`. `tests/check.sh` rejects a stale or corrupted visual baseline.
+When the thought-field shader changes, regenerate its runtime capture. When Compose
+layout changes, update the affected mockup or replace it with an emulator screenshot.
+Then review the current screen set and refresh `ui-preview.sha256`; `tests/check.sh`
+rejects stale or corrupted tracked sources and images.
 
 Actual emulator/device screenshots should use the same filenames in a new versioned
 directory, with this README updated to state the device, build target, density, and

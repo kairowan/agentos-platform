@@ -40,7 +40,7 @@ internal fun AgentAvatarView(
 }
 
 private class AvatarSurfaceView(context: Context) : GLSurfaceView(context) {
-    private val avatarRenderer = AvatarRenderer()
+    private val avatarRenderer = AvatarRenderer(context.applicationContext)
     private val scaleDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
             avatarRenderer.zoom = (avatarRenderer.zoom / detector.scaleFactor).coerceIn(3.8f, 7.2f)
@@ -65,9 +65,11 @@ private class AvatarSurfaceView(context: Context) : GLSurfaceView(context) {
     }
 
     fun updateAvatar(avatar: AgentAvatar, expression: AvatarExpression, performance: AvatarPerformance) {
+        val normalizedPerformance = performance.normalized()
         avatarRenderer.avatar = avatar
         avatarRenderer.expression = expression
-        avatarRenderer.performance = performance.normalized()
+        avatarRenderer.performance = normalizedPerformance
+        avatarRenderer.thoughtState = ThoughtFieldUniformState.from(expression, normalizedPerformance)
         requestRender()
     }
 
@@ -100,10 +102,11 @@ private class AvatarSurfaceView(context: Context) : GLSurfaceView(context) {
     private companion object { const val FRAME_DELAY_MS = 33L }
 }
 
-private class AvatarRenderer : GLSurfaceView.Renderer {
+private class AvatarRenderer(context: Context) : GLSurfaceView.Renderer {
     @Volatile var avatar = AgentAvatar()
     @Volatile var expression = AvatarExpression.NEUTRAL
     @Volatile var performance = AvatarPerformance()
+    @Volatile var thoughtState = ThoughtFieldUniformState.from(expression, performance)
     @Volatile var yaw = -12f
     @Volatile var zoom = 5.3f
 
@@ -119,13 +122,24 @@ private class AvatarRenderer : GLSurfaceView.Renderer {
     private var alphaHandle = 0
     private var timeHandle = 0
     private var deformHandle = 0
-    private var fieldProgram = 0
-    private var fieldPositionHandle = 0
-    private var fieldMvpHandle = 0
-    private var fieldColorHandle = 0
-    private var fieldPointSizeHandle = 0
-    private var fieldRoundHandle = 0
-    private lateinit var thoughtField: ThoughtFieldMesh
+    private val thoughtFragmentShader = context.resources.openRawResource(R.raw.thought_field_fragment)
+        .bufferedReader().use { it.readText() }
+    private lateinit var thoughtQuad: FullscreenQuad
+    private var thoughtProgram = 0
+    private var thoughtPositionHandle = 0
+    private var thoughtResolutionHandle = 0
+    private var thoughtTimeHandle = 0
+    private var thoughtYawHandle = 0
+    private var thoughtZoomHandle = 0
+    private var thoughtMoodHandle = 0
+    private var thoughtGestureHandle = 0
+    private var thoughtIntensityHandle = 0
+    private var thoughtGazeHandle = 0
+    private var thoughtShapeHandle = 0
+    private var thoughtFieldShapeHandle = 0
+    private var thoughtExpressionHandle = 0
+    private var surfaceWidth = 1
+    private var surfaceHeight = 1
     private var frameSeconds = 0f
     private val projection = FloatArray(16)
     private val view = FloatArray(16)
@@ -150,17 +164,26 @@ private class AvatarRenderer : GLSurfaceView.Renderer {
         alphaHandle = GLES20.glGetUniformLocation(program, "uAlpha")
         timeHandle = GLES20.glGetUniformLocation(program, "uTime")
         deformHandle = GLES20.glGetUniformLocation(program, "uDeform")
-        fieldProgram = createProgram(FIELD_VERTEX_SHADER, FIELD_FRAGMENT_SHADER)
-        fieldPositionHandle = GLES20.glGetAttribLocation(fieldProgram, "aPosition")
-        fieldMvpHandle = GLES20.glGetUniformLocation(fieldProgram, "uMvp")
-        fieldColorHandle = GLES20.glGetUniformLocation(fieldProgram, "uColor")
-        fieldPointSizeHandle = GLES20.glGetUniformLocation(fieldProgram, "uPointSize")
-        fieldRoundHandle = GLES20.glGetUniformLocation(fieldProgram, "uRound")
+        thoughtProgram = createProgram(THOUGHT_VERTEX_SHADER, thoughtFragmentShader)
+        thoughtPositionHandle = GLES20.glGetAttribLocation(thoughtProgram, "aPosition")
+        thoughtResolutionHandle = GLES20.glGetUniformLocation(thoughtProgram, "uResolution")
+        thoughtTimeHandle = GLES20.glGetUniformLocation(thoughtProgram, "uTime")
+        thoughtYawHandle = GLES20.glGetUniformLocation(thoughtProgram, "uYaw")
+        thoughtZoomHandle = GLES20.glGetUniformLocation(thoughtProgram, "uZoom")
+        thoughtMoodHandle = GLES20.glGetUniformLocation(thoughtProgram, "uMood")
+        thoughtGestureHandle = GLES20.glGetUniformLocation(thoughtProgram, "uGesture")
+        thoughtIntensityHandle = GLES20.glGetUniformLocation(thoughtProgram, "uIntensity")
+        thoughtGazeHandle = GLES20.glGetUniformLocation(thoughtProgram, "uGaze")
+        thoughtShapeHandle = GLES20.glGetUniformLocation(thoughtProgram, "uShape")
+        thoughtFieldShapeHandle = GLES20.glGetUniformLocation(thoughtProgram, "uFieldShape")
+        thoughtExpressionHandle = GLES20.glGetUniformLocation(thoughtProgram, "uExpression")
         mesh = SphereMesh(24, 16)
-        thoughtField = ThoughtFieldMesh()
+        thoughtQuad = FullscreenQuad()
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
+        surfaceWidth = width.coerceAtLeast(1)
+        surfaceHeight = height.coerceAtLeast(1)
         GLES20.glViewport(0, 0, width, height)
         Matrix.perspectiveM(projection, 0, 36f, width.toFloat() / height.coerceAtLeast(1), 0.1f, 20f)
     }
@@ -175,6 +198,10 @@ private class AvatarRenderer : GLSurfaceView.Renderer {
     private fun drawAvatar(value: AgentAvatar, mood: AvatarExpression, direction: AvatarPerformance) {
         val seconds = SystemClock.uptimeMillis() / 1_000f * direction.tempo
         frameSeconds = seconds
+        if (value.styleFamily == AvatarStyleFamily.SYSTEM) {
+            drawThoughtFieldAvatar(value, seconds)
+            return
+        }
         val strength = direction.intensity
         val breath = sin(seconds * 2.1f) * 0.018f
         val idleSway = sin(seconds * 0.72f) * 0.018f
@@ -182,10 +209,6 @@ private class AvatarRenderer : GLSurfaceView.Renderer {
         val gestureNod = if (direction.gesture == AvatarGesture.NOD) sin(seconds * 5.5f) * 0.06f * strength else 0f
         val talkBeat = if (direction.gesture == AvatarGesture.TALK) sin(seconds * 3.8f) * 8f * strength else 0f
         val bodyX = idleSway + if (direction.gesture == AvatarGesture.CELEBRATE) sin(seconds * 3f) * 0.06f else 0f
-        if (value.styleFamily == AvatarStyleFamily.SYSTEM) {
-            drawThoughtFieldAvatar(value, mood, direction, seconds, breath, bodyX)
-            return
-        }
         val skin = value.skinTone.argb.rgb()
         val hair = value.hairColor.argb.rgb()
         val outfit = value.outfitColor.argb.rgb()
@@ -290,161 +313,33 @@ private class AvatarRenderer : GLSurfaceView.Renderer {
         drawAccessory(value.accessory, accent, head, gloss, glow, bodyX, headY - 0.62f)
     }
 
-    /**
-     * AgentOS' native identity is a deforming thought field, never a fixed mascot body.
-     * Facial marks and gesture limbs condense only when the current interaction needs them.
-     */
+    /** The production shader computes every visible pixel of the default identity at runtime. */
     private fun drawThoughtFieldAvatar(
         value: AgentAvatar,
-        mood: AvatarExpression,
-        direction: AvatarPerformance,
         seconds: Float,
-        breath: Float,
-        bodyX: Float,
     ) {
-        val glass = 0xFF091217.rgb()
-        val glassLight = 0xFF1B2A30.rgb()
-        val amber = 0xFFFFB45B.rgb()
-        val warmWhite = 0xFFFFF1D7.rgb()
-        val memory = when (mood) {
-            AvatarExpression.LISTENING -> 0xFF78F4D3.rgb()
-            AvatarExpression.THINKING -> 0xFF8FB6FF.rgb()
-            AvatarExpression.CONCERNED -> 0xFFFF8B82.rgb()
-            AvatarExpression.HAPPY -> 0xFFFFD37C.rgb()
-            else -> amber
-        }
-        val glow = 0.48f + value.glow * 0.48f
-        val strength = direction.intensity
-        val pulse = 1f + sin(seconds * 2.2f) * (0.028f + strength * 0.018f)
-        val focus = if (direction.gesture == AvatarGesture.THINK) 0.08f else 0f
-        val knotWidth = 0.9f + value.faceWidth * 0.2f
-        val coreScale = 0.85f + value.headScale * 0.3f
-
-        drawThoughtField(bodyX, seconds, strength, value.shoulderWidth, value.bodyHeight, memory)
-
-        // Black-glass lobes overlap into one asymmetric, breathing consciousness knot.
-        drawPart(bodyX - 0.24f, 0.31f + breath, -0.03f,
-            0.56f * pulse * knotWidth, 0.86f, 0.4f, glass, 0.94f, glow, -17f, 0.78f, 0.075f + focus)
-        drawPart(bodyX + 0.27f, 0.22f - breath * 0.4f, -0.05f,
-            0.53f * knotWidth, 0.79f * pulse, 0.42f, glassLight, 0.92f, glow, 21f, 0.7f, 0.062f + focus)
-        drawPart(bodyX - 0.03f, -0.48f + breath, -0.08f,
-            0.59f * knotWidth, 0.72f * pulse, 0.43f, glass, 0.96f, glow, 4f, 0.76f, 0.09f + focus)
-
-        // The amber core is the only stable landmark; all surrounding anatomy stays transient.
-        drawPart(bodyX, -0.08f + breath, 0.36f,
-            0.24f * pulse * coreScale, 0.34f * pulse * coreScale, 0.18f, amber, 0.9f, 0.96f, deform = 0.035f)
-        drawPart(bodyX, -0.08f + breath, 0.5f,
-            0.09f * pulse * coreScale, 0.14f * pulse * coreScale, 0.05f, warmWhite, 0.84f, 1f)
-
-        val communicating = mood == AvatarExpression.SPEAKING || mood == AvatarExpression.LISTENING ||
-            mood == AvatarExpression.HAPPY || mood == AvatarExpression.SURPRISED ||
-            direction.gesture == AvatarGesture.TALK
-        val facePresence = when {
-            communicating -> 0.96f
-            mood == AvatarExpression.SLEEPY -> 0.08f
-            mood == AvatarExpression.THINKING -> 0.22f
-            else -> 0.38f
-        }
-        val blink = (SystemClock.uptimeMillis() % 4_600L) in 0L..115L
-        val eyeHeight = when {
-            blink -> 0.01f
-            mood == AvatarExpression.HAPPY -> 0.027f
-            mood == AvatarExpression.SURPRISED -> 0.095f
-            else -> 0.052f
-        }
-        val gazeX = direction.gazeX * 0.04f
-        val gazeY = direction.gazeY * 0.025f
-        val eyeGap = 0.1f + value.eyeSpacing * 0.1f
-        val eyeWidth = 0.035f + value.eyeSize * 0.03f
-        drawPart(bodyX - eyeGap + gazeX, 0.48f + gazeY + breath, 0.48f,
-            eyeWidth, eyeHeight, 0.024f, warmWhite, 0.74f, 1f, alpha = facePresence)
-        drawPart(bodyX + eyeGap + gazeX, 0.48f + gazeY + breath, 0.48f,
-            eyeWidth, eyeHeight, 0.024f, warmWhite, 0.74f, 1f, alpha = facePresence)
-        val mouthOpen = when (mood) {
-            AvatarExpression.SPEAKING -> 0.018f + abs(sin(seconds * 9f)) * 0.068f
-            AvatarExpression.SURPRISED -> 0.085f
-            AvatarExpression.HAPPY -> 0.024f
-            else -> 0.012f
-        }
-        drawPart(bodyX, 0.31f + breath, 0.5f,
-            0.09f + value.mouthWidth * 0.08f, mouthOpen, 0.022f,
-            memory, 0.72f, 1f, alpha = facePresence)
-
-        drawThoughtGesture(direction.gesture, bodyX, breath, seconds, strength, glassLight, memory, glow)
-    }
-
-    private fun drawThoughtField(
-        bodyX: Float,
-        seconds: Float,
-        intensity: Float,
-        width: Float,
-        height: Float,
-        color: FloatArray,
-    ) {
-        thoughtField.update(seconds, intensity)
-        Matrix.setIdentityM(model, 0)
-        Matrix.rotateM(model, 0, yaw, 0f, 1f, 0f)
-        Matrix.translateM(model, 0, bodyX, 0f, 0f)
-        Matrix.scaleM(model, 0, 0.86f + width * 0.28f, 0.9f + height * 0.18f, 1f)
-        Matrix.multiplyMM(viewModel, 0, view, 0, model, 0)
-        Matrix.multiplyMM(mvp, 0, projection, 0, viewModel, 0)
-        GLES20.glUseProgram(fieldProgram)
-        GLES20.glUniformMatrix4fv(fieldMvpHandle, 1, false, mvp, 0)
-        GLES20.glDepthMask(false)
-        GLES20.glUniform4f(fieldColorHandle, color[0], color[1], color[2], 0.18f + intensity * 0.12f)
-        GLES20.glUniform1f(fieldPointSizeHandle, 1.5f)
-        GLES20.glUniform1f(fieldRoundHandle, 0f)
-        thoughtField.drawLines(fieldPositionHandle)
-        GLES20.glUniform4f(fieldColorHandle, color[0], color[1], color[2], 0.58f + intensity * 0.25f)
-        GLES20.glUniform1f(fieldPointSizeHandle, 3.5f + intensity * 2.2f)
-        GLES20.glUniform1f(fieldRoundHandle, 1f)
-        thoughtField.drawPoints(fieldPositionHandle)
-        GLES20.glDepthMask(true)
-        GLES20.glUseProgram(program)
-    }
-
-    private fun drawThoughtGesture(
-        gesture: AvatarGesture,
-        bodyX: Float,
-        breath: Float,
-        seconds: Float,
-        intensity: Float,
-        glass: FloatArray,
-        light: FloatArray,
-        glow: Float,
-    ) {
-        val active = when (gesture) {
-            AvatarGesture.WAVE, AvatarGesture.POINT, AvatarGesture.CELEBRATE,
-            AvatarGesture.COMFORT, AvatarGesture.EXPLAIN, AvatarGesture.TALK -> true
-            else -> false
-        }
-        if (!active) return
-        val side = if (gesture == AvatarGesture.COMFORT) -1f else 1f
-        val lift = when (gesture) {
-            AvatarGesture.WAVE, AvatarGesture.CELEBRATE -> 0.86f
-            AvatarGesture.POINT -> 0.28f
-            AvatarGesture.COMFORT -> -0.2f
-            else -> 0.12f + sin(seconds * 3.2f) * 0.12f
-        }
-        val wave = if (gesture == AvatarGesture.WAVE) sin(seconds * 7.5f) * 0.16f else 0f
-        repeat(6) { index ->
-            val progress = (index + 1) / 6f
-            val curl = sin(progress * PI.toFloat()) * (0.12f + wave)
-            drawPart(
-                bodyX + side * (0.31f + progress * 0.72f) + curl,
-                -0.02f + breath + lift * progress,
-                0.04f + progress * 0.12f,
-                0.16f - progress * 0.055f,
-                0.24f - progress * 0.085f,
-                0.14f - progress * 0.035f,
-                if (index == 5) light else glass,
-                0.86f,
-                glow,
-                rotationZ = -side * (34f + lift * 18f),
-                alpha = (0.78f - progress * 0.18f) * intensity.coerceAtLeast(0.35f),
-                deform = 0.05f,
-            )
-        }
+        val state = thoughtState
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST)
+        GLES20.glDisable(GLES20.GL_CULL_FACE)
+        GLES20.glDisable(GLES20.GL_BLEND)
+        GLES20.glUseProgram(thoughtProgram)
+        GLES20.glUniform2f(thoughtResolutionHandle, surfaceWidth.toFloat(), surfaceHeight.toFloat())
+        GLES20.glUniform1f(thoughtTimeHandle, seconds)
+        GLES20.glUniform1f(thoughtYawHandle, yaw)
+        GLES20.glUniform1f(thoughtZoomHandle, zoom)
+        GLES20.glUniform1f(thoughtMoodHandle, state.mood)
+        GLES20.glUniform1f(thoughtGestureHandle, state.gesture)
+        GLES20.glUniform1f(thoughtIntensityHandle, state.intensity)
+        GLES20.glUniform2f(thoughtGazeHandle, state.gazeX, state.gazeY)
+        GLES20.glUniform4f(thoughtShapeHandle,
+            value.faceWidth, value.headScale, value.eyeSpacing, value.eyeSize)
+        GLES20.glUniform2f(thoughtFieldShapeHandle, value.shoulderWidth, value.bodyHeight)
+        GLES20.glUniform4f(thoughtExpressionHandle,
+            state.speaking, value.mouthWidth, state.facePresence, value.glow)
+        thoughtQuad.draw(thoughtPositionHandle)
+        GLES20.glEnable(GLES20.GL_BLEND)
+        GLES20.glEnable(GLES20.GL_CULL_FACE)
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST)
     }
 
     private fun drawHair(
@@ -583,22 +478,12 @@ private class AvatarRenderer : GLSurfaceView.Renderer {
                 gl_FragColor = vec4(color, uAlpha);
             }
         """
-        const val FIELD_VERTEX_SHADER = """
-            uniform mat4 uMvp;
-            uniform float uPointSize;
-            attribute vec3 aPosition;
+        const val THOUGHT_VERTEX_SHADER = """
+            attribute vec2 aPosition;
+            varying vec2 vUv;
             void main() {
-                gl_Position = uMvp * vec4(aPosition, 1.0);
-                gl_PointSize = uPointSize;
-            }
-        """
-        const val FIELD_FRAGMENT_SHADER = """
-            precision mediump float;
-            uniform vec4 uColor;
-            uniform float uRound;
-            void main() {
-                if (uRound > 0.5 && distance(gl_PointCoord, vec2(0.5)) > 0.5) discard;
-                gl_FragColor = uColor;
+                vUv = aPosition * 0.5 + 0.5;
+                gl_Position = vec4(aPosition, 0.0, 1.0);
             }
         """
     }
@@ -652,49 +537,18 @@ private class SphereMesh(segments: Int, rings: Int) {
     }
 }
 
-private class ThoughtFieldMesh {
-    private val pointData = FloatArray(ThoughtFieldGeometry.POINT_COUNT * 3)
-    private val lineData = FloatArray(LINK_COUNT * 6)
-    private val points = directFloatBuffer(pointData.size)
-    private val lines = directFloatBuffer(lineData.size)
-
-    fun update(seconds: Float, intensity: Float) {
-        repeat(ThoughtFieldGeometry.POINT_COUNT) { index ->
-            ThoughtFieldGeometry.writePosition(index, seconds, intensity, pointData, index * 3)
+private class FullscreenQuad {
+    private val vertices = ByteBuffer.allocateDirect(8 * 4).order(ByteOrder.nativeOrder())
+        .asFloatBuffer().apply {
+            put(floatArrayOf(-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f))
+            position(0)
         }
-        repeat(LINK_COUNT) { link ->
-            copyPoint(link * 4, link * 6)
-            copyPoint((link * 4 + 37) % ThoughtFieldGeometry.POINT_COUNT, link * 6 + 3)
-        }
-        points.position(0); points.put(pointData); points.position(0)
-        lines.position(0); lines.put(lineData); lines.position(0)
-    }
 
-    fun drawPoints(positionHandle: Int) = draw(positionHandle, points, GLES20.GL_POINTS, ThoughtFieldGeometry.POINT_COUNT)
-
-    fun drawLines(positionHandle: Int) = draw(positionHandle, lines, GLES20.GL_LINES, LINK_COUNT * 2)
-
-    private fun copyPoint(point: Int, targetOffset: Int) {
-        val sourceOffset = point * 3
-        lineData[targetOffset] = pointData[sourceOffset]
-        lineData[targetOffset + 1] = pointData[sourceOffset + 1]
-        lineData[targetOffset + 2] = pointData[sourceOffset + 2]
-    }
-
-    private fun draw(positionHandle: Int, buffer: FloatBuffer, mode: Int, count: Int) {
-        buffer.position(0)
-        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 12, buffer)
+    fun draw(positionHandle: Int) {
+        vertices.position(0)
+        GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 8, vertices)
         GLES20.glEnableVertexAttribArray(positionHandle)
-        GLES20.glDrawArrays(mode, 0, count)
-    }
-
-    private companion object {
-        // ponytail: a fixed 36-edge constellation keeps the mobile render budget predictable;
-        // promote this to a bounded graph buffer only when live memory-node topology is wired in.
-        const val LINK_COUNT = 36
-
-        fun directFloatBuffer(size: Int): FloatBuffer =
-            ByteBuffer.allocateDirect(size * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
     }
 }
 

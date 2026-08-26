@@ -9,7 +9,8 @@ renderer; this is not a WebView, prerecorded video, or flat sticker.
 The default `SYSTEM` family is the AgentOS Thought Field. It is intentionally
 genderless, non-human, and not a robot mascot: overlapping deformable black-glass
 lobes form a living consciousness knot around one warm amber core. A deterministic
-particle stream and constellation links visualize thought and long-term memory.
+fragment shader generates dense moving filaments, two depths of particles, and a
+ten-node constellation at runtime to visualize thought and long-term memory.
 There is no permanent head, torso, clothing, or pair of limbs. Eyes, a voice mark,
 and one flowing gesture limb condense only when communication needs them, then
 dissolve back into the field. The voice mark follows TTS rhythm while gaze, color,
@@ -20,12 +21,14 @@ identities, never the product's default or brand anchor.
 
 ## Runtime
 
-- native `GLSurfaceView`/OpenGL ES 2.0 pipeline with depth testing, alpha blending,
-  lit materials, vertex deformation, point sprites, and constellation lines;
+- native `GLSurfaceView`/OpenGL ES 2.0 pipeline with one full-screen procedural pass
+  for `SYSTEM` and the existing lit mesh pass for user-created character families;
 - reusable UV-sphere mesh, transformed into the head, body, eyes, hair, clothing,
   accessories, and expression geometry;
-- fixed reusable buffers for 144 moving thought particles and 36 memory links, with
-  no per-frame mesh allocation and only two extra field draw calls;
+- no image texture, generated portrait, downloaded model, or per-frame CPU geometry
+  is used by the default identity: black glass, nine internal filaments, moving motes,
+  constellation links, core bloom, optical face, and temporary gesture are evaluated
+  from the bundled `thought_field_fragment.glsl` for every rendered frame;
 - orbital inspection camera: drag to rotate and pinch to zoom;
 - visibility-bound 30 fps rendering for natural motion without an unrestricted loop;
 - four material responses: matte, gloss, metal, and hologram;
@@ -76,3 +79,13 @@ signed asset pipeline: generate glTF/GLB, scan and bound it off-device, remove s
 and external URIs, verify triangle/texture/bone budgets, sign the bundle, preview it,
 then import only after confirmation. That pipeline is intentionally not simulated by
 accepting unsafe model output directly inside a privileged system app.
+
+## Reproducible visual verification
+
+`scripts/thought-field-preview.html` compiles the production fragment shader through
+WebGL 1, the browser equivalent of its OpenGL ES 2 target. Run
+`scripts/capture-thought-field-preview.sh` to render the fixed speaking/waving frame
+stored as `docs/images/ui-v2/thought-field-runtime-v1.png`. That PNG is test evidence,
+not a runtime input. Shader changes must regenerate it; AI-generated images cannot be
+used as proof that a visual feature exists in code. Final device validation still
+needs a representative Android GPU because drivers can differ in precision and speed.

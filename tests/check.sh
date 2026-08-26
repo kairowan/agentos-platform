@@ -35,8 +35,12 @@ grep -q 'fun CharacterStudio' "${project_root}/apps/AgentShell/src/com/agentos/s
 grep -q 'enum class AvatarExpression' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentAvatar.kt"
 grep -q 'class LocalAgentAvatarStore' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentAvatar.kt"
 grep -q 'class AvatarRenderer' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentAvatar3DView.kt"
-grep -q 'class ThoughtFieldMesh' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentAvatar3DView.kt"
-grep -q 'object ThoughtFieldGeometry' "${project_root}/apps/AgentShell/src/com/agentos/shell/ThoughtFieldGeometry.kt"
+grep -q 'class FullscreenQuad' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentAvatar3DView.kt"
+grep -q 'data class ThoughtFieldUniformState' "${project_root}/apps/AgentShell/src/com/agentos/shell/ThoughtFieldUniformState.kt"
+grep -q 'uniform vec2 uResolution' "${project_root}/apps/AgentShell/res/raw/thought_field_fragment.glsl"
+grep -q 'sdBezier' "${project_root}/apps/AgentShell/res/raw/thought_field_fragment.glsl"
+! grep -q 'sampler2D' "${project_root}/apps/AgentShell/res/raw/thought_field_fragment.glsl"
+grep -q 'thought_field_fragment.glsl' "${project_root}/scripts/thought-field-preview.html"
 grep -q 'enum class AvatarGesture' "${project_root}/apps/AgentShell/src/com/agentos/shell/AvatarPerformance.kt"
 grep -q 'FRAME_DELAY_MS = 33L' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentAvatar3DView.kt"
 grep -q 'class AvatarStyleParser' "${project_root}/apps/AgentShell/src/com/agentos/shell/AvatarStyleGenerator.kt"
@@ -66,8 +70,9 @@ grep -q 'class GeneratedUiParser' "${project_root}/apps/AgentShell/src/com/agent
 python3 -m json.tool "${project_root}/schemas/generated-ui.schema.json" >/dev/null
 python3 -m json.tool "${project_root}/schemas/avatar-style.schema.json" >/dev/null
 bash -n "${project_root}/scripts/capture-hotword-diagnostics.sh"
+bash -n "${project_root}/scripts/capture-thought-field-preview.sh"
 
-for preview in home-v7 character-studio-v6 app-bridge-v2 camera-v2 knowledge-v2; do
+for preview in thought-field-runtime-v1 home-v7 character-studio-v6 app-bridge-v2 camera-v2 knowledge-v2; do
   test -s "${project_root}/docs/images/ui-v2/${preview}.png"
 done
 

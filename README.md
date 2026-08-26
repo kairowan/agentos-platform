@@ -7,11 +7,13 @@ Buildable AgentOS product code for AOSP 17. The
 [`agentos`](https://github.com/kairowan/agentos) bootstrap checks this repository
 out at `vendor/agentos` inside the AOSP source tree.
 
-![AgentOS deforming 3D thought-field interface](docs/images/ui-v2/home-v7.png)
+![AgentOS production thought-field shader output](docs/images/ui-v2/thought-field-runtime-v1.png)
 
-The image above is the current high-fidelity UI baseline. It mirrors the native
-Compose implementation but is not presented as an emulator screenshot. The full
-four-screen set is documented in [`docs/ui-system.md`](docs/ui-system.md).
+The image above is a deterministic capture of the same WebGL 1/OpenGL ES 2 fragment
+shader bundled in AgentShell—not an AI-generated concept image and not a texture used
+by the app. It fixes the runtime uniforms at one speaking/waving frame so the visual
+implementation can be reviewed without an Android device. Native Compose layout
+references are documented separately in [`docs/ui-system.md`](docs/ui-system.md).
 
 ## v0.4 baseline
 
@@ -68,9 +70,10 @@ rather than a human, robot, or anime assistant mascot. Its face and gesture geom
 condense only while needed and dissolve back into the field. Human, anime, fantasy,
 and other styles remain explicit user customizations in Character Studio.
 Its expression follows listening, thinking, speaking, and attention state. A native
-OpenGL ES renderer provides an orbit camera, procedural body/face geometry, materials,
-hair, outfits, accessories, continuous shaping, expression previews, and local
-persistence. An enabled OpenAI-compatible model can translate a natural-language
+OpenGL ES renderer provides an orbit camera, a full-screen procedural thought-field
+shader for the default identity, optional mesh-based human families, continuous
+shaping, expression previews, and local persistence. An enabled OpenAI-compatible
+model can translate a natural-language
 style request into a strictly validated avatar schema; model output never becomes
 shader code or an executable downloaded asset. See
 [`docs/avatar-system.md`](docs/avatar-system.md).
