@@ -17,6 +17,8 @@ android_app {
         "androidx.lifecycle_lifecycle-viewmodel",
         "androidx.lifecycle_lifecycle-viewmodel-compose",
         "androidx.lifecycle_lifecycle-viewmodel-ktx",
+        "androidx.room_room-runtime",
+        "androidx.room_room-ktx",
         "kotlinx_coroutines_android",
     ],
     certificate: "platform",
@@ -25,4 +27,5 @@ android_app {
     platform_apis: true,
     kotlincflags: ["-Xjvm-default=all"],
     use_resource_processor: true,
+    plugins: ["androidx.room_room-compiler-plugin"],
 }

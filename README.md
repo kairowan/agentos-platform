@@ -35,9 +35,9 @@ speech-recognition turn, and closes it automatically on silence. Delivery to the
 Shell uses a signature permission plus a one-time command ticket.
 
 The same hotword can interrupt an active plan or spoken response. AgentShell keeps
-all local task history in SQLite and renders every conversation plus an automatically
+all local task history through Room/SQLite and renders every conversation plus an automatically
 extracted semantic graph of people, relationships, preferences, projects, places,
-and long-term facts. Every relation retains source evidence and confidence; model
+and long-term facts on a pannable, 0.35×–4× zoomable, editable mind-map canvas. Every relation retains source evidence and confidence; model
 inferences are visibly marked as candidates and cannot authorize capabilities.
 
 This source boundary is buildable only inside AOSP; the standalone Gradle build

@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -40,6 +41,9 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -84,6 +88,9 @@ class MainActivity : ComponentActivity() {
                     },
                     onToggleHistory = viewModel::toggleHistory,
                     onClearHistory = viewModel::clearHistory,
+                    onRenameKnowledgeEntity = viewModel::renameKnowledgeEntity,
+                    onEditKnowledgeRelation = viewModel::editKnowledgeRelation,
+                    onRemoveKnowledgeRelation = viewModel::removeKnowledgeRelation,
                     onNotificationAccess = {
                         startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                     },
@@ -149,11 +156,15 @@ internal fun AgentShellContent(
     onVoiceSettings: () -> Unit,
     onToggleHistory: () -> Unit,
     onClearHistory: () -> Unit,
+    onRenameKnowledgeEntity: (String, String, String) -> Unit,
+    onEditKnowledgeRelation: (String, String, String, String) -> Unit,
+    onRemoveKnowledgeRelation: (String) -> Unit,
     onNotificationAccess: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         if (state.showHistory) {
-            KnowledgeScreen(state, onToggleHistory, onClearHistory)
+            KnowledgeScreen(state, onToggleHistory, onClearHistory,
+                onRenameKnowledgeEntity, onEditKnowledgeRelation, onRemoveKnowledgeRelation)
         } else Column(
                 modifier = Modifier
                     .statusBarsPadding()
@@ -264,7 +275,15 @@ private fun HistoryMindMap(
 }
 
 @Composable
-private fun KnowledgeScreen(state: AgentUiState, onBack: () -> Unit, onClear: () -> Unit) {
+private fun KnowledgeScreen(
+    state: AgentUiState,
+    onBack: () -> Unit,
+    onClear: () -> Unit,
+    onRenameEntity: (String, String, String) -> Unit,
+    onEditRelation: (String, String, String, String) -> Unit,
+    onRemoveRelation: (String) -> Unit,
+) {
+    var editingRelation by remember { mutableStateOf<KnowledgeRelation?>(null) }
     LazyColumn(
         modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 22.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -288,6 +307,7 @@ private fun KnowledgeScreen(state: AgentUiState, onBack: () -> Unit, onClear: ()
         if (state.knowledgeGraph.relations.isEmpty()) {
             item { Text("历史中暂未提取到人物、关系、偏好、项目或长期事实。") }
         } else {
+            item { InteractiveKnowledgeGraph(state.knowledgeGraph, onRenameEntity) }
             item { Text("● 用户知识", color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold) }
             items(state.knowledgeGraph.relations, key = { "${it.sourceTurnId}:${it.source.id}:${it.predicate}:${it.target.id}:${it.evidence}" }) { relation ->
@@ -299,6 +319,10 @@ private fun KnowledgeScreen(state: AgentUiState, onBack: () -> Unit, onClear: ()
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary)
                         Text("来源：${relation.evidence}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { editingRelation = relation }) { Text("修改关系") }
+                            TextButton(onClick = { onRemoveRelation(relation.id) }) { Text("删除") }
+                        }
                     }
                 }
             }
@@ -317,6 +341,38 @@ private fun KnowledgeScreen(state: AgentUiState, onBack: () -> Unit, onClear: ()
         }
         item { Spacer(Modifier.size(18.dp)) }
     }
+    editingRelation?.let { relation ->
+        RelationEditor(relation, onDismiss = { editingRelation = null }) { predicate, target, type ->
+            onEditRelation(relation.id, predicate, target, type)
+            editingRelation = null
+        }
+    }
+}
+
+@Composable
+private fun RelationEditor(
+    relation: KnowledgeRelation,
+    onDismiss: () -> Unit,
+    onSave: (String, String, String) -> Unit,
+) {
+    var predicate by remember(relation.id) { mutableStateOf(relation.predicate) }
+    var target by remember(relation.id) { mutableStateOf(relation.target.name) }
+    var targetType by remember(relation.id) { mutableStateOf(relation.target.type) }
+    val validPredicate = predicate.matches(Regex("[\\p{L}\\p{N}_-]{1,50}"))
+    val valid = validPredicate && target.isNotBlank() && targetType.uppercase() in KNOWLEDGE_ENTITY_TYPES
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("修改知识关系") },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(predicate, { predicate = it.take(50) }, label = { Text("关系") })
+            OutlinedTextField(target, { target = it.take(100) }, label = { Text("目标节点") })
+            OutlinedTextField(targetType, { targetType = it.take(30) }, label = { Text("目标类型") },
+                supportingText = { Text(KNOWLEDGE_ENTITY_TYPES.joinToString()) })
+            Text("原始来源保留：${relation.evidence}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } },
+        confirmButton = { TextButton(onClick = { onSave(predicate, target, targetType.uppercase()) }, enabled = valid) { Text("保存") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
+    )
 }
 
 @Composable

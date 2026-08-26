@@ -86,6 +86,29 @@ class AgentShellViewModel internal constructor(
         }
     }
 
+    fun renameKnowledgeEntity(id: String, name: String, type: String) {
+        updateKnowledgeGraph { historyStore.renameEntity(id, name, type) }
+    }
+
+    fun editKnowledgeRelation(id: String, predicate: String, targetName: String, targetType: String) {
+        updateKnowledgeGraph { historyStore.editRelation(id, predicate, targetName, targetType) }
+    }
+
+    fun removeKnowledgeRelation(id: String) {
+        updateKnowledgeGraph { historyStore.removeRelation(id) }
+    }
+
+    private fun updateKnowledgeGraph(change: () -> KnowledgeGraph) {
+        viewModelScope.launch {
+            val graph = try {
+                withContext(Dispatchers.IO) { historyMutex.withLock { change() } }
+            } catch (_: IllegalArgumentException) {
+                return@launch
+            }
+            mutableUiState.update { it.copy(knowledgeGraph = graph) }
+        }
+    }
+
     fun setRemoteModelEnabled(enabled: Boolean) {
         mutableUiState.update { it.copy(useRemoteModel = enabled) }
     }
