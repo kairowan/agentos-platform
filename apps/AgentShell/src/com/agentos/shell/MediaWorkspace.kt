@@ -7,6 +7,7 @@ import android.view.SurfaceView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,10 +19,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -39,10 +42,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.agentos.capability.api.MediaItem
@@ -66,33 +69,31 @@ internal fun MediaWorkspace(
     onRefreshGallery: () -> Unit,
     onOpenItem: (MediaItem) -> Unit,
 ) {
-    Column(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 18.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-            TextButton(onClick = onClose) { Text("返回") }
-            Text(when (state.mode) {
+    AgentBackdrop {
+        Column(
+            Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            val title = when (state.mode) {
                 MediaWorkspaceMode.CAMERA -> "AgentOS 相机"
                 MediaWorkspaceMode.GALLERY -> "AgentOS 图库"
                 MediaWorkspaceMode.RECORDER -> "AgentOS 录音机"
                 else -> "媒体工作区"
-            }, style = MaterialTheme.typography.titleLarge)
-            if (state.mode == MediaWorkspaceMode.GALLERY) {
-                TextButton(onClick = onRefreshGallery) { Text("刷新") }
-            } else TextButton(onClick = {}) { Text("") }
-        }
-        when (state.mode) {
-            MediaWorkspaceMode.CAMERA -> CameraWorkspace(state, onAttachSurface, onDetachSurface,
-                onSwitchCamera, onZoom, onFocus, onCapturePhoto, onToggleVideo)
-            MediaWorkspaceMode.GALLERY -> GalleryWorkspace(state, onOpenItem)
-            MediaWorkspaceMode.RECORDER -> RecorderWorkspace(state, onToggleAudio, onToggleAudioPause)
-            MediaWorkspaceMode.CLOSED -> Unit
-        }
-        if (state.message.isNotBlank()) {
-            Text(state.message, color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.fillMaxWidth())
+            }
+            AgentTopBar(title, when (state.mode) {
+                MediaWorkspaceMode.CAMERA -> "原生 Camera2 · 点击画面对焦"
+                MediaWorkspaceMode.GALLERY -> "照片、视频与录音统一管理"
+                MediaWorkspaceMode.RECORDER -> "系统麦克风 · 本地保存"
+                else -> ""
+            }, onClose, if (state.mode == MediaWorkspaceMode.GALLERY) "刷新" else null, onRefreshGallery)
+            when (state.mode) {
+                MediaWorkspaceMode.CAMERA -> CameraWorkspace(state, onAttachSurface, onDetachSurface,
+                    onSwitchCamera, onZoom, onFocus, onCapturePhoto, onToggleVideo)
+                MediaWorkspaceMode.GALLERY -> GalleryWorkspace(state, onOpenItem)
+                MediaWorkspaceMode.RECORDER -> RecorderWorkspace(state, onToggleAudio, onToggleAudioPause)
+                MediaWorkspaceMode.CLOSED -> Unit
+            }
+            if (state.message.isNotBlank()) AgentPill(state.message, AgentMint)
         }
     }
 }
@@ -112,7 +113,9 @@ private fun CameraWorkspace(
     DisposableEffect(Unit) { onDispose(onDetachSurface) }
     Box(
         Modifier.fillMaxWidth().aspectRatio(3f / 4f)
-            .background(Color.Black, RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(28.dp))
+            .background(Color.Black)
+            .border(1.dp, AgentMint.copy(alpha = 0.3f), RoundedCornerShape(28.dp))
             .pointerInput(state.cameraReady) {
                 if (state.cameraReady) detectTapGestures { offset ->
                     onFocus(offset.x / size.width, offset.y / size.height)
@@ -138,16 +141,20 @@ private fun CameraWorkspace(
                 modifier = Modifier.align(Alignment.TopStart).padding(18.dp))
         }
     }
-    Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(10.dp), Alignment.CenterVertically) {
-        Text("${state.zoom.formatOne()}×")
-        Slider(value = state.zoom, onValueChange = onZoom, valueRange = 1f..8f,
-            modifier = Modifier.weight(1f))
-        TextButton(onClick = onSwitchCamera, enabled = !state.videoRecording) { Text("切换镜头") }
-    }
-    Row(Modifier.fillMaxWidth(), Arrangement.SpaceEvenly, Alignment.CenterVertically) {
-        Button(onClick = onCapturePhoto, enabled = state.cameraReady && !state.videoRecording) { Text("拍照") }
-        Button(onClick = onToggleVideo, enabled = state.cameraReady) {
-            Text(if (state.videoRecording) "停止录像" else "开始录像")
+    AgentPanel(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(10.dp), Alignment.CenterVertically) {
+                AgentPill("${state.zoom.formatOne()}×", AgentBlue)
+                Slider(value = state.zoom, onValueChange = onZoom, valueRange = 1f..8f,
+                    modifier = Modifier.weight(1f))
+                TextButton(onClick = onSwitchCamera, enabled = !state.videoRecording) { Text("翻转") }
+            }
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceEvenly, Alignment.CenterVertically) {
+                Button(onClick = onCapturePhoto, enabled = state.cameraReady && !state.videoRecording,
+                    shape = CircleShape) { Text("拍照") }
+                Button(onClick = onToggleVideo, enabled = state.cameraReady,
+                    shape = CircleShape) { Text(if (state.videoRecording) "停止录像" else "录像") }
+            }
         }
     }
 }
@@ -173,8 +180,10 @@ private fun GalleryWorkspace(state: MediaWorkspaceState, onOpenItem: (MediaItem)
 @Composable
 private fun MediaTile(item: MediaItem, onOpenItem: (MediaItem) -> Unit) {
     Card(
-        Modifier.fillMaxWidth().clickable { onOpenItem(item) },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        Modifier.fillMaxWidth().clickable { onOpenItem(item) }
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(18.dp)),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = AgentSurface),
     ) {
         if (item.mimeType.startsWith("image/") || item.mimeType.startsWith("video/")) {
             MediaThumbnail(item)
@@ -213,8 +222,12 @@ private fun RecorderWorkspace(
     onTogglePause: () -> Unit,
 ) {
     val waveformColor = MaterialTheme.colorScheme.primary
-    Column(Modifier.fillMaxSize(), Arrangement.Center, Alignment.CenterHorizontally) {
-        Text(formatDuration(state.elapsedMillis), style = MaterialTheme.typography.displayMedium)
+    AgentPanel(Modifier.fillMaxSize(), if (state.audioRecording) AgentDanger else AgentMint) {
+      Column(Modifier.fillMaxSize().padding(20.dp), Arrangement.Center, Alignment.CenterHorizontally) {
+        AgentPill(if (state.audioPaused) "已暂停" else if (state.audioRecording) "正在录音" else "准备就绪",
+            if (state.audioRecording) AgentDanger else AgentMint)
+        Text(formatDuration(state.elapsedMillis), style = MaterialTheme.typography.displayMedium,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
         Canvas(Modifier.fillMaxWidth().height(180.dp).padding(vertical = 28.dp)) {
             val values = state.amplitudes.ifEmpty { List(40) { 0.03f } }
             val step = size.width / max(values.size, 1)
@@ -232,6 +245,7 @@ private fun RecorderWorkspace(
             }
             Button(onClick = onToggleAudio) { Text(if (state.audioRecording) "停止并保存" else "开始录音") }
         }
+      }
     }
 }
 

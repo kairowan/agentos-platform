@@ -8,7 +8,8 @@ pretend that every application has a public API.
 provides a signature-protected AIDL boundary. Its first vertical slice supports:
 
 - discovery of activities that explicitly advertise themselves as launchable;
-- coarse video, reading, news, food, social, and fallback categories;
+- a shared adapter catalog for short video, long video, reading, news, food,
+  social, shopping, music, maps, and a safe generic fallback;
 - one-time, 60-second confirmation tokens before opening another application;
 - a maximum 200-node semantic snapshot from the optional accessibility bridge;
 - generic click and scroll actions plus confirmed text input;
@@ -32,8 +33,9 @@ network APIs, and automatic final payment remain outside this bridge.
 
 ## Adapter direction
 
-The current category policy is intentionally small. App-specific adapters should
-translate domain requests into the same generic launch/snapshot/action contract,
-not receive new permissions. When an app exposes a standard deep link,
+The catalog assigns each recognized provider a category and declared UI-level
+capabilities, while the generic fallback keeps unknown launchable apps usable.
+Future package-specific navigation rules translate domain requests into the same
+generic launch/snapshot/action contract, not new permissions. When an app exposes a standard deep link,
 `ContentProvider`, share target, or `MediaSession`, that stable platform interface
 should take precedence over semantic UI automation.

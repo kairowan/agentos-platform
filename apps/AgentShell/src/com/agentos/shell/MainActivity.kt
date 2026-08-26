@@ -21,16 +21,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -38,7 +32,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -244,158 +237,16 @@ internal fun AgentShellContent(
     onOpenApps: () -> Unit,
     onNotificationAccess: () -> Unit,
 ) {
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        if (state.showHistory) {
-            KnowledgeScreen(state, onToggleHistory, onClearHistory,
-                onRenameKnowledgeEntity, onMoveKnowledgeEntity,
-                onEditKnowledgeRelation, onRemoveKnowledgeRelation)
-        } else Column(
-                modifier = Modifier
-                    .statusBarsPadding()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 22.dp, vertical = 18.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
-            ) {
-            Header(state.useRemoteModel)
-            ModelSettings(state, onToggleModelSettings, onRemoteModelEnabled,
-                onModelEndpointChanged, onModelNameChanged, onModelApiKeyChanged)
-            VoiceCard(state, onVoiceSettings)
-            HistoryMindMap(state, onToggleHistory)
-            MediaCard(onOpenMedia)
-            AppBridgeCard(onOpenApps)
-
-            state.notice?.let { NoticeCard(it) }
-            NotificationInbox(state, onNotificationAccess)
-            GeneratedScreenView(state.screen, onSuggestion)
-            state.approval?.let { ApprovalCard(it, onApprove, onDeny) }
-
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = state.prompt,
-                    onValueChange = onPromptChanged,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("输入目标") },
-                    placeholder = { Text("例如：打开 Wi-Fi 设置") },
-                    minLines = 2,
-                    enabled = !state.isWorking && state.approval == null,
-                )
-                Button(
-                    onClick = onSubmit,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = state.prompt.isNotBlank() && !state.isWorking && state.approval == null,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                ) {
-                    if (state.isWorking) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp,
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Text("智能体正在规划")
-                    } else {
-                        Text("交给智能体")
-                    }
-                }
-            }
-            }
-    }
-}
-
-@Composable
-private fun AppBridgeCard(onOpen: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(20.dp),
-    ) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("应用能力桥", style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold)
-            Text("把已安装应用作为后台能力提供者，读取可访问语义或经确认后拉起",
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Button(onClick = onOpen, modifier = Modifier.fillMaxWidth()) { Text("管理应用能力") }
-        }
-    }
-}
-
-@Composable
-private fun VoiceCard(state: AgentUiState, onVoiceSettings: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (state.isWorking) Color(0xFF17332D) else MaterialTheme.colorScheme.surface,
-        ),
-        shape = RoundedCornerShape(24.dp),
-    ) {
-        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("语音智能体", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(
-                if (state.isWorking) "正在处理语音目标" else state.voiceStatus,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Button(
-                onClick = onVoiceSettings,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("配置系统语音助手")
-            }
-        }
-    }
-}
-
-@Composable
-private fun HistoryMindMap(
-    state: AgentUiState,
-    onToggle: () -> Unit,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(20.dp),
-    ) {
-        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column {
-                    Text("历史知识图", fontWeight = FontWeight.Bold)
-                    Text(
-                        "本机私有 · ${state.history.size} 段历史 · ${state.knowledgeGraph.relations.size} 条关系",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                TextButton(onClick = onToggle) { Text(if (state.showHistory) "收起" else "查看") }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MediaCard(onOpenMedia: (MediaWorkspaceMode) -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(20.dp),
-    ) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("原生媒体工作区", style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold)
-            Text("Camera HAL、MediaStore 与系统录音链路",
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { onOpenMedia(MediaWorkspaceMode.CAMERA) }) { Text("相机") }
-                Button(onClick = { onOpenMedia(MediaWorkspaceMode.GALLERY) }) { Text("图库") }
-                Button(onClick = { onOpenMedia(MediaWorkspaceMode.RECORDER) }) { Text("录音") }
-            }
-        }
-    }
+    if (state.showHistory) {
+        KnowledgeScreen(state, onToggleHistory, onClearHistory,
+            onRenameKnowledgeEntity, onMoveKnowledgeEntity,
+            onEditKnowledgeRelation, onRemoveKnowledgeRelation)
+    } else AgentHomeScreen(
+        state, onPromptChanged, onSubmit, onSuggestion, onToggleModelSettings,
+        onRemoteModelEnabled, onModelEndpointChanged, onModelNameChanged,
+        onModelApiKeyChanged, onApprove, onDeny, onVoiceSettings, onToggleHistory,
+        onOpenMedia, onOpenApps, onNotificationAccess,
+    )
 }
 
 @Composable
@@ -411,25 +262,23 @@ private fun KnowledgeScreen(
     var editingRelation by remember { mutableStateOf<KnowledgeRelation?>(null) }
     var deletingRelation by remember { mutableStateOf<KnowledgeRelation?>(null) }
     var confirmingClear by remember { mutableStateOf(false) }
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 22.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
+    AgentBackdrop {
+      LazyColumn(
+        modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+      ) {
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 18.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = onBack) { Text("返回") }
-                TextButton(onClick = { confirmingClear = true }, enabled = state.history.isNotEmpty()) { Text("清除全部") }
-            }
+            AgentTopBar("记忆与知识", "全部历史、人物、关系与长期事实", onBack,
+                "清理", { if (state.history.isNotEmpty()) confirmingClear = true })
         }
         item {
-            Text("语义知识图谱", style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold)
-            Text("${state.knowledgeGraph.entities.size} 个实体 · ${state.knowledgeGraph.relations.size} 条关系 · 全部带原文来源",
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            AgentPanel(Modifier.fillMaxWidth(), AgentBlue) {
+                Row(Modifier.fillMaxWidth().padding(16.dp), Arrangement.SpaceEvenly) {
+                    KnowledgeMetric("历史", state.history.size)
+                    KnowledgeMetric("实体", state.knowledgeGraph.entities.size)
+                    KnowledgeMetric("关系", state.knowledgeGraph.relations.size)
+                }
+            }
         }
         if (state.knowledgeGraph.relations.isEmpty()) {
             item { Text("历史中暂未提取到人物、关系、偏好、项目或长期事实。") }
@@ -438,7 +287,7 @@ private fun KnowledgeScreen(
             item { Text("● 用户知识", color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold) }
             items(state.knowledgeGraph.relations, key = { "${it.sourceTurnId}:${it.source.id}:${it.predicate}:${it.target.id}:${it.evidence}" }) { relation ->
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                AgentPanel(Modifier.fillMaxWidth()) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text("${relation.source.name}  ─${relation.predicate}→  ${relation.target.name}",
                             fontWeight = FontWeight.SemiBold)
@@ -459,7 +308,7 @@ private fun KnowledgeScreen(
                 fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
         }
         items(state.history.asReversed(), key = ConversationEntry::id) { entry ->
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            AgentPanel(Modifier.fillMaxWidth()) {
                 Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     Text(entry.prompt, fontWeight = FontWeight.SemiBold)
                     Text("→ ${entry.responseTitle}", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -467,6 +316,7 @@ private fun KnowledgeScreen(
             }
         }
         item { Spacer(Modifier.size(18.dp)) }
+      }
     }
     editingRelation?.let { relation ->
         RelationEditor(relation, onDismiss = { editingRelation = null }) { predicate, target, type ->
@@ -501,6 +351,16 @@ private fun KnowledgeScreen(
 }
 
 @Composable
+private fun KnowledgeMetric(label: String, value: Int) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value.toString(), style = MaterialTheme.typography.headlineSmall,
+            color = AgentMint, fontWeight = FontWeight.Bold)
+        Text(label, style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
 private fun RelationEditor(
     relation: KnowledgeRelation,
     onDismiss: () -> Unit,
@@ -527,12 +387,8 @@ private fun RelationEditor(
 }
 
 @Composable
-private fun NotificationInbox(state: AgentUiState, onNotificationAccess: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(20.dp),
-    ) {
+internal fun NotificationInbox(state: AgentUiState, onNotificationAccess: () -> Unit) {
+    AgentPanel(Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -566,47 +422,7 @@ private fun NotificationInbox(state: AgentUiState, onNotificationAccess: () -> U
 }
 
 @Composable
-private fun Header(remoteModelEnabled: Boolean) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "AGENT OS / TRUSTED SHELL",
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-            )
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = RoundedCornerShape(100.dp),
-            ) {
-                Text(
-                    if (remoteModelEnabled) "MODEL + BROKER" else "OFFLINE + BROKER",
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        Text(
-            text = "你想让系统完成什么？",
-            color = MaterialTheme.colorScheme.onBackground,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Text(
-            text = "模型只能提出计划；系统能力必须经过 Broker 策略和可信确认界面。",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodyMedium,
-        )
-    }
-}
-
-@Composable
-private fun ModelSettings(
+internal fun ModelSettings(
     state: AgentUiState,
     onToggle: () -> Unit,
     onEnabled: (Boolean) -> Unit,
@@ -614,11 +430,7 @@ private fun ModelSettings(
     onModel: (String) -> Unit,
     onApiKey: (String) -> Unit,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(18.dp),
-    ) {
+    AgentPanel(Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -677,7 +489,7 @@ private fun ModelSettings(
 }
 
 @Composable
-private fun NoticeCard(message: String) {
+internal fun NoticeCard(message: String) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color(0xFF2D2614),
@@ -688,12 +500,8 @@ private fun NoticeCard(message: String) {
 }
 
 @Composable
-private fun ApprovalCard(request: ApprovalRequest, onApprove: () -> Unit, onDeny: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF312517)),
-        shape = RoundedCornerShape(20.dp),
-    ) {
+internal fun ApprovalCard(request: ApprovalRequest, onApprove: () -> Unit, onDeny: () -> Unit) {
+    AgentPanel(Modifier.fillMaxWidth(), AgentAmber) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("系统确认", color = Color(0xFFFFC66D), fontWeight = FontWeight.Bold)
             Text(request.title, style = MaterialTheme.typography.titleMedium)
@@ -708,12 +516,8 @@ private fun ApprovalCard(request: ApprovalRequest, onApprove: () -> Unit, onDeny
 }
 
 @Composable
-private fun GeneratedScreenView(screen: GeneratedScreen, onAction: (String) -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(24.dp),
-    ) {
+internal fun GeneratedScreenView(screen: GeneratedScreen, onAction: (String) -> Unit) {
+    AgentPanel(Modifier.fillMaxWidth(), AgentBlue) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(screen.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             screen.blocks.forEach { block ->
@@ -744,21 +548,4 @@ private fun FactRow(block: UiBlock.Fact) {
         Spacer(Modifier.width(16.dp))
         Text(block.value, fontWeight = FontWeight.SemiBold)
     }
-}
-
-@Composable
-private fun AgentOsTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = darkColorScheme(
-            primary = Color(0xFF83D5C5),
-            onPrimary = Color(0xFF06201B),
-            background = Color(0xFF0A1114),
-            onBackground = Color(0xFFE4F1EE),
-            surface = Color(0xFF111B1F),
-            onSurface = Color(0xFFE4F1EE),
-            surfaceVariant = Color(0xFF1A292D),
-            onSurfaceVariant = Color(0xFFB6C9C5),
-        ),
-        content = content,
-    )
 }

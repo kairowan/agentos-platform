@@ -8,9 +8,10 @@ import org.junit.Test
 
 class AppBridgePolicyTest {
     @Test fun classifiesKnownDomainsWithoutBindingToOneVendor() {
-        assertEquals("视频", AppCategoryPolicy.classify("tv.danmaku.bili", "哔哩哔哩视频"))
-        assertEquals("外卖", AppCategoryPolicy.classify("com.sankuai.meituan", "美团"))
-        assertEquals("其他", AppCategoryPolicy.classify("dev.example.notes", "Notes"))
+        assertEquals("视频", AppAdapterCatalog.resolve("tv.danmaku.bili", "哔哩哔哩视频").category)
+        assertEquals("外卖", AppAdapterCatalog.resolve("com.sankuai.meituan", "美团").category)
+        assertEquals("其他", AppAdapterCatalog.resolve("dev.example.notes", "Notes").category)
+        assertTrue(AppAdapterCatalog.resolve("com.ss.android.ugc.aweme", "抖音").capabilities.contains("上下切换"))
     }
 
     @Test fun confirmsInputsAndTransactionLikeClicks() {

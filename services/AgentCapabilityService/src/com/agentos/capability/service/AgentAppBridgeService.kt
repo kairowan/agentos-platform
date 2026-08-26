@@ -79,7 +79,8 @@ class AgentAppBridgeService : Service() {
                 val packageName = info.activityInfo?.packageName ?: return@mapNotNull null
                 val label = info.loadLabel(packageManager)?.toString()?.trim().orEmpty()
                     .ifBlank { packageName }
-                AppDescriptor(packageName, label, AppCategoryPolicy.classify(packageName, label))
+                val profile = AppAdapterCatalog.resolve(packageName, label)
+                AppDescriptor(packageName, label, profile.category, profile.capabilities)
             }
             .distinctBy(AppDescriptor::packageName)
             .sortedWith(compareBy(AppDescriptor::category, AppDescriptor::label))

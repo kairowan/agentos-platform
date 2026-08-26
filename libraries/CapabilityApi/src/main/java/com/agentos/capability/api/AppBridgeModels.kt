@@ -7,12 +7,15 @@ class AppDescriptor(
     val packageName: String,
     val label: String,
     val category: String,
+    val capabilities: List<String>,
 ) : Parcelable {
     private constructor(parcel: Parcel) : this(
         parcel.readString().orEmpty(), parcel.readString().orEmpty(), parcel.readString().orEmpty(),
+        parcel.createStringArrayList().orEmpty(),
     )
     override fun writeToParcel(parcel: Parcel, flags: Int) {
         parcel.writeString(packageName); parcel.writeString(label); parcel.writeString(category)
+        parcel.writeStringList(capabilities)
     }
     override fun describeContents() = 0
     companion object CREATOR : Parcelable.Creator<AppDescriptor> {

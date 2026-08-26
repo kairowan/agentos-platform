@@ -48,6 +48,12 @@ confirmation before launching, and can expose a bounded accessibility-semantic
 snapshot instead of private app files or credentials. See
 [`docs/app-bridge.md`](docs/app-bridge.md).
 
+AgentShell now uses one native Compose design system across home, media, installed
+apps, confirmation, notifications, and the full knowledge graph. The home screen
+keeps the command composer fixed above the keyboard, makes voice state the primary
+surface, and groups camera, gallery, installed apps, and memory as immediate actions.
+See [`docs/ui-system.md`](docs/ui-system.md).
+
 The same hotword can interrupt an active plan or spoken response. AgentShell keeps
 all local task history through Room/SQLite and renders every conversation plus an automatically
 extracted semantic graph of people, relationships, preferences, projects, places,
