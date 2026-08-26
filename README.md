@@ -70,9 +70,10 @@ rather than a human, robot, or anime assistant mascot. Its face and gesture geom
 condense only while needed and dissolve back into the field. Human, anime, fantasy,
 and other styles remain explicit user customizations in Character Studio.
 Its expression follows listening, thinking, speaking, and attention state. A native
-OpenGL ES renderer provides an orbit camera, a full-screen procedural thought-field
-shader for the default identity, optional mesh-based human families, continuous
-shaping, expression previews, and local persistence. An enabled OpenAI-compatible
+OpenGL ES renderer combines a procedural volume layer, two deforming indexed glass
+surfaces, and a depth-tested temporary gesture rig for the default identity. It also
+provides an orbit camera, optional mesh-based human families, continuous shaping,
+expression previews, and local persistence. An enabled OpenAI-compatible
 model can translate a natural-language
 style request into a strictly validated avatar schema; model output never becomes
 shader code or an executable downloaded asset. See

@@ -25,10 +25,11 @@ or execute privileged actions during composition.
 
 ## Runtime-derived avatar baseline
 
-The following frame is rendered from AgentShell's production fragment shader by the
-checked-in WebGL/GLES preview harness. It is not AI-generated and is never loaded as a
-texture by the app. It is the source of truth for the character material and effects;
-real Android GPU validation is still required.
+The following frame is rendered from AgentShell's production volume and glass
+shaders, indexed 3D surface, and joint rig by the checked-in WebGL/GLES preview
+harness. It is not AI-generated and is never loaded as a texture by the app. It is
+the source of truth for the character material and effects; real Android GPU
+validation is still required.
 
 ![AgentOS production thought-field shader](images/ui-v2/thought-field-runtime-v1.png)
 

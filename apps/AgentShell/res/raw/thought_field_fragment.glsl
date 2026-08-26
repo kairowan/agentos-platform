@@ -11,6 +11,7 @@ uniform vec2 uGaze;
 uniform vec4 uShape;
 uniform vec2 uFieldShape;
 uniform vec4 uExpression;
+uniform float uSurfaceLayer;
 varying vec2 vUv;
 
 const float PI = 3.14159265;
@@ -105,7 +106,7 @@ void main() {
     float lowerBody = 1.0 - smoothstep(-0.15, 0.58, p.y);
     float center = sin(p.y * 2.02 + time * 0.24) * 0.055
         + sin(p.y * 4.45 - time * 0.15) * 0.022
-        + sin((p.y + 1.05) * 2.7 - time * 0.10) * lowerBody * 0.105
+        + sin((p.y + 1.05) * 2.7 - time * 0.10) * lowerBody * 0.140
         + yaw * p.y * 0.035;
     center -= smoothstep(0.68, 1.72, p.y) * 0.050;
     float knotScale = 0.90 + uShape.x * 0.20;
@@ -153,8 +154,9 @@ void main() {
     color += inside * vec3(0.016, 0.023, 0.024)
         * (0.72 + internalNoise * 1.05 + volumeDepth * 0.32);
     color += glassCaustic * vec3(0.30, 0.25, 0.17) * 0.32;
-    color += glassEdge * vec3(0.66, 0.72, 0.69) * (0.34 + internalNoise * 0.52);
-    color += secondaryEdge * vec3(0.28, 0.32, 0.31) * 0.26;
+    float screenSurface = mix(1.0, 0.24, uSurfaceLayer);
+    color += glassEdge * vec3(0.66, 0.72, 0.69) * (0.34 + internalNoise * 0.52) * screenSurface;
+    color += secondaryEdge * vec3(0.28, 0.32, 0.31) * 0.26 * screenSurface;
     color += lobeLight * vec3(0.64, 0.52, 0.34) * 0.54;
 
     // Fine multi-speed thought filaments create the dense golden interior flow.
@@ -293,6 +295,7 @@ void main() {
     float gestureActive = max(1.0 - step(0.5, abs(uGesture - 3.0)), step(4.5, uGesture));
     gestureActive *= 1.0 - step(9.5, uGesture);
     gestureActive *= smoothstep(0.05, 0.35, uIntensity);
+    gestureActive *= 1.0 - uSurfaceLayer;
     vec2 gestureStart = vec2(center - 0.31, 0.25);
     vec2 gestureEnd = vec2(-0.64, 0.76 + sin(time * 6.2) * 0.035);
     if (abs(uGesture - 6.0) < 0.5) gestureEnd = vec2(0.86, 0.24);

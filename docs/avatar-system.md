@@ -9,8 +9,8 @@ renderer; this is not a WebView, prerecorded video, or flat sticker.
 The default `SYSTEM` family is the AgentOS Thought Field. It is intentionally
 genderless, non-human, and not a robot mascot: overlapping deformable black-glass
 lobes form a living consciousness knot around one warm amber core. A deterministic
-fragment shader generates dense moving filaments, two depths of particles, and a
-ten-node constellation at runtime to visualize thought and long-term memory.
+volume shader generates dense moving filaments, two depths of particles, and a
+memory constellation behind two procedurally generated, deforming glass surfaces.
 There is no permanent head, torso, clothing, or pair of limbs. Eyes, a voice mark,
 and one flowing gesture limb condense only when communication needs them, then
 dissolve back into the field. The voice mark follows TTS rhythm while gaze, color,
@@ -21,14 +21,19 @@ identities, never the product's default or brand anchor.
 
 ## Runtime
 
-- native `GLSurfaceView`/OpenGL ES 2.0 pipeline with one full-screen procedural pass
-  for `SYSTEM` and the existing lit mesh pass for user-created character families;
+- native `GLSurfaceView`/OpenGL ES 2.0 pipeline with a full-screen volume pass, two
+  indexed glass-surface layers, a depth pre-pass, and a temporary joint rig for
+  `SYSTEM`; user-created character families retain the existing lit mesh pass;
+- one reusable 64×28 parameter mesh whose vertex shader produces the asymmetric
+  head, neck, shoulders, torso, waist, and open tail at runtime; drag rotation now
+  changes real surface depth, normals, Fresnel highlights, and occlusion;
 - reusable UV-sphere mesh, transformed into the head, body, eyes, hair, clothing,
-  accessories, and expression geometry;
+  accessories, expression geometry, and the temporary system hand's arm, palm, and
+  finger joints;
 - no image texture, generated portrait, downloaded model, or per-frame CPU geometry
-  is used by the default identity: black glass, sixteen internal filaments, moving motes,
-  constellation links, core bloom, optical face, and temporary gesture are evaluated
-  from the bundled `thought_field_fragment.glsl` for every rendered frame;
+  is used by the default identity: black glass, sixteen internal filaments, moving
+  motes, constellation links, core bloom, optical face, layered surface refraction,
+  and temporary gesture geometry are evaluated from bundled shaders every frame;
 - orbital inspection camera: drag to rotate and pinch to zoom;
 - visibility-bound 30 fps rendering for natural motion without an unrestricted loop;
 - four material responses: matte, gloss, metal, and hologram;
@@ -82,8 +87,9 @@ accepting unsafe model output directly inside a privileged system app.
 
 ## Reproducible visual verification
 
-`scripts/thought-field-preview.html` compiles the production fragment shader through
-WebGL 1, the browser equivalent of its OpenGL ES 2 target. Run
+`scripts/thought-field-preview.html` compiles the production volume, surface, part,
+and shared glass shaders through WebGL 1, the browser equivalent of the OpenGL ES 2
+target. It builds the same 64×28 parameter surface and 24×16 joint sphere. Run
 `scripts/capture-thought-field-preview.sh` to render the fixed speaking/waving frame
 stored as `docs/images/ui-v2/thought-field-runtime-v1.png`. That PNG is test evidence,
 not a runtime input. Shader changes must regenerate it; AI-generated images cannot be
