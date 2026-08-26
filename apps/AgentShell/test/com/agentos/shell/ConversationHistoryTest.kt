@@ -17,4 +17,13 @@ class ConversationHistoryTest {
         assertTrue(ConversationHistoryCodec.decode("not json").isEmpty())
         assertTrue(ConversationHistoryCodec.decode("[{}]").isEmpty())
     }
+
+    @Test
+    fun migrationCodecDoesNotTruncateHistory() {
+        val entries = (1..150).map { index ->
+            ConversationEntry("turn-$index", index.toLong(), "目标 $index", "结果 $index")
+        }
+
+        assertEquals(entries, ConversationHistoryCodec.decode(ConversationHistoryCodec.encode(entries)))
+    }
 }

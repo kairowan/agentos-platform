@@ -7,12 +7,16 @@ import androidx.lifecycle.viewModelScope
 import com.agentos.capability.api.AgentNotificationEvent
 import com.agentos.capability.core.ApprovalRequest
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 data class AgentUiState(
     val prompt: String = "",
@@ -29,6 +33,7 @@ data class AgentUiState(
     val voiceReply: String? = null,
     val notifications: List<AgentNotificationEvent> = emptyList(),
     val history: List<ConversationEntry> = emptyList(),
+    val knowledgeGraph: KnowledgeGraph = KnowledgeGraph(),
     val showHistory: Boolean = false,
 ) {
     override fun toString(): String =
@@ -41,11 +46,18 @@ class AgentShellViewModel internal constructor(
     private val historyStore: ConversationHistory = EmptyConversationHistory,
 ) : ViewModel() {
     private val runtime = AgentRuntime(gateway)
-    private val mutableUiState = MutableStateFlow(AgentUiState(history = historyStore.load()))
+    private val mutableUiState = MutableStateFlow(AgentUiState())
     val uiState: StateFlow<AgentUiState> = mutableUiState.asStateFlow()
     private var activeTurn: Job? = null
+    private val historyMutex = Mutex()
 
     init {
+        viewModelScope.launch {
+            val (history, graph) = withContext(Dispatchers.IO) {
+                historyMutex.withLock { historyStore.load() to historyStore.loadGraph() }
+            }
+            mutableUiState.update { it.copy(history = history, knowledgeGraph = graph) }
+        }
         viewModelScope.launch {
             gateway.notificationEvents.collect { event ->
                 mutableUiState.update {
@@ -68,8 +80,10 @@ class AgentShellViewModel internal constructor(
     }
 
     fun clearHistory() {
-        historyStore.clear()
-        mutableUiState.update { it.copy(history = emptyList()) }
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { historyMutex.withLock { historyStore.clear() } }
+            mutableUiState.update { it.copy(history = emptyList(), knowledgeGraph = KnowledgeGraph()) }
+        }
     }
 
     fun setRemoteModelEnabled(enabled: Boolean) {
@@ -121,7 +135,13 @@ class AgentShellViewModel internal constructor(
             try {
                 val config = currentModelConfig()
                 val turn = runtime.handle(prompt.trim(), config)
-                val history = historyStore.append(prompt.trim(), turn.screen.title)
+                val sourceText = prompt.trim()
+                val snapshot = withContext(Dispatchers.IO) {
+                    historyMutex.withLock {
+                        historyStore.append(sourceText, turn.screen.title,
+                            LocalKnowledgeExtractor.extract(sourceText))
+                    }
+                }
                 mutableUiState.update {
                     it.copy(
                         screen = turn.screen,
@@ -129,13 +149,32 @@ class AgentShellViewModel internal constructor(
                         notice = turn.notice,
                         isWorking = false,
                         voiceReply = if (fromVoice) turn.toSpeechText() else null,
-                        history = history,
+                        history = snapshot.entries,
+                        knowledgeGraph = snapshot.graph,
                     )
+                }
+                if (config != null) {
+                    try {
+                        val inferred = ModelKnowledgeExtractor(config).extract(sourceText)
+                        val graph = withContext(Dispatchers.IO) {
+                            historyMutex.withLock { historyStore.merge(snapshot.turnId, inferred) }
+                        }
+                        mutableUiState.update { it.copy(knowledgeGraph = graph) }
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        // Knowledge extraction is supplementary; task completion survives failure.
+                    }
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                val history = historyStore.append(prompt.trim(), "任务未执行")
+                val snapshot = withContext(Dispatchers.IO) {
+                    historyMutex.withLock {
+                        historyStore.append(prompt.trim(), "任务未执行",
+                            LocalKnowledgeExtractor.extract(prompt.trim()))
+                    }
+                }
                 mutableUiState.update {
                     it.copy(
                         screen = GeneratedScreen(
@@ -145,7 +184,8 @@ class AgentShellViewModel internal constructor(
                         notice = "未向任何系统能力发出请求。",
                         isWorking = false,
                         voiceReply = if (fromVoice) "任务未执行。系统内部发生错误。" else null,
-                        history = history,
+                        history = snapshot.entries,
+                        knowledgeGraph = snapshot.graph,
                     )
                 }
             }
@@ -181,6 +221,7 @@ class AgentShellViewModel internal constructor(
     }
 
     override fun onCleared() {
+        historyStore.close()
         gateway.close()
     }
 

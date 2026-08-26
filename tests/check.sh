@@ -27,7 +27,9 @@ grep -q 'EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1200L' "${project_ro
 grep -q 'MAX_LISTENING_MILLIS = 10_000L' "${project_root}/services/AgentVoiceService/src/com/agentos/voice/AgentVoiceInteractionSession.java"
 grep -q 'ACTION_INTERRUPT_OUTPUT' "${project_root}/services/AgentVoiceService/src/com/agentos/voice/AgentVoiceInteractionService.java"
 grep -q 'class LocalConversationHistory' "${project_root}/apps/AgentShell/src/com/agentos/shell/ConversationHistory.kt"
-grep -q 'MAX_ENTRIES = 100' "${project_root}/apps/AgentShell/src/com/agentos/shell/ConversationHistory.kt"
+grep -q 'SQLiteOpenHelper' "${project_root}/apps/AgentShell/src/com/agentos/shell/ConversationHistory.kt"
+grep -q 'class ModelKnowledgeExtractor' "${project_root}/apps/AgentShell/src/com/agentos/shell/KnowledgeExtractor.kt"
+grep -q 'state.history.asReversed()' "${project_root}/apps/AgentShell/src/com/agentos/shell/MainActivity.kt"
 grep -q 'config_forceVoiceInteractionServicePackage' "${project_root}/overlay/frameworks/base/core/res/res/values/config.xml"
 grep -q 'com.agentos.voice domain=agent_voice_service' "${project_root}/sepolicy/private/seapp_contexts"
 grep -q 'Binder.getCallingUid' "${project_root}/services/AgentCapabilityService/src/com/agentos/capability/service/AgentCapabilityService.kt"
@@ -35,5 +37,6 @@ grep -q 'com.agentos.capability domain=agent_capability_service' "${project_root
 grep -q 'class OpenAiCompatiblePlanner' "${project_root}/apps/AgentShell/src/com/agentos/shell/OpenAiCompatiblePlanner.kt"
 grep -q 'class GeneratedUiParser' "${project_root}/apps/AgentShell/src/com/agentos/shell/GeneratedUiParser.kt"
 python3 -m json.tool "${project_root}/schemas/generated-ui.schema.json" >/dev/null
+bash -n "${project_root}/scripts/capture-hotword-diagnostics.sh"
 
 echo "AgentOS platform checks passed"

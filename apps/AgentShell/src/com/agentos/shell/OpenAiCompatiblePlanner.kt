@@ -28,50 +28,12 @@ class OpenAiCompatiblePlanner(
     private val config: ModelConfig,
     private val parser: GeneratedUiParser = GeneratedUiParser(),
 ) : AgentPlanner {
-    override suspend fun plan(prompt: String): AgentPlan = withContext(Dispatchers.IO) {
+    override suspend fun plan(prompt: String): AgentPlan {
         require(prompt.isNotBlank() && prompt.length <= 8_000) { "Invalid prompt" }
-        val connection = URI(config.endpoint).toURL().openConnection() as HttpURLConnection
-        try {
-            connection.requestMethod = "POST"
-            connection.connectTimeout = 15_000
-            connection.readTimeout = 45_000
-            connection.doOutput = true
-            connection.instanceFollowRedirects = false
-            connection.setRequestProperty("Content-Type", "application/json")
-            connection.setRequestProperty("Accept", "application/json")
-            if (config.apiKey.isNotBlank()) {
-                connection.setRequestProperty("Authorization", "Bearer ${config.apiKey}")
-            }
-            connection.outputStream.use { it.write(requestBody(prompt).toByteArray(Charsets.UTF_8)) }
-
-            val status = connection.responseCode
-            require(status in 200..299) { "Model endpoint returned HTTP $status" }
-            val response = connection.inputStream.use { it.readUtf8Limited(MAX_RESPONSE_BYTES) }
-            val content = JSONObject(response)
-                .getJSONArray("choices")
-                .getJSONObject(0)
-                .getJSONObject("message")
-                .getString("content")
-            parser.parse(content)
-        } finally {
-            connection.disconnect()
-        }
+        return parser.parse(openAiJson(config, SYSTEM_PROMPT, prompt).toString())
     }
 
-    private fun requestBody(prompt: String): String = JSONObject()
-        .put("model", config.model)
-        .put("temperature", 0)
-        .put("response_format", JSONObject().put("type", "json_object"))
-        .put(
-            "messages",
-            JSONArray()
-                .put(JSONObject().put("role", "system").put("content", SYSTEM_PROMPT))
-                .put(JSONObject().put("role", "user").put("content", prompt)),
-        )
-        .toString()
-
     private companion object {
-        const val MAX_RESPONSE_BYTES = 1_048_576
         val SYSTEM_PROMPT = """
             You are the unprivileged planner for AgentOS. Return exactly one JSON object.
             Schema: {"version":1,"title":"...","blocks":[paragraph|fact|action],"capability":null|string}.
@@ -84,6 +46,39 @@ class OpenAiCompatiblePlanner(
         """.trimIndent()
     }
 }
+
+internal suspend fun openAiJson(config: ModelConfig, systemPrompt: String, prompt: String): JSONObject =
+    withContext(Dispatchers.IO) {
+        val connection = URI(config.endpoint).toURL().openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 45_000
+            connection.doOutput = true
+            connection.instanceFollowRedirects = false
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.setRequestProperty("Accept", "application/json")
+            if (config.apiKey.isNotBlank()) connection.setRequestProperty("Authorization", "Bearer ${config.apiKey}")
+            val body = JSONObject()
+                .put("model", config.model)
+                .put("temperature", 0)
+                .put("response_format", JSONObject().put("type", "json_object"))
+                .put("messages", JSONArray()
+                    .put(JSONObject().put("role", "system").put("content", systemPrompt))
+                    .put(JSONObject().put("role", "user").put("content", prompt)))
+            connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+            val status = connection.responseCode
+            require(status in 200..299) { "Model endpoint returned HTTP $status" }
+            val response = connection.inputStream.use { it.readUtf8Limited(MAX_RESPONSE_BYTES) }
+            val content = JSONObject(response).getJSONArray("choices").getJSONObject(0)
+                .getJSONObject("message").getString("content")
+            JSONObject(content)
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+private const val MAX_RESPONSE_BYTES = 1_048_576
 
 internal fun validateModelEndpoint(value: String) {
     val uri = URI(value)

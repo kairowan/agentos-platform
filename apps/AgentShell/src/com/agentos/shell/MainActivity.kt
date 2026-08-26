@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -150,18 +152,20 @@ internal fun AgentShellContent(
     onNotificationAccess: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            modifier = Modifier
-                .statusBarsPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 22.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
+        if (state.showHistory) {
+            KnowledgeScreen(state, onToggleHistory, onClearHistory)
+        } else Column(
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 22.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+            ) {
             Header(state.useRemoteModel)
             ModelSettings(state, onToggleModelSettings, onRemoteModelEnabled,
                 onModelEndpointChanged, onModelNameChanged, onModelApiKeyChanged)
             VoiceCard(state, onVoiceSettings)
-            HistoryMindMap(state, onToggleHistory, onClearHistory)
+            HistoryMindMap(state, onToggleHistory)
 
             state.notice?.let { NoticeCard(it) }
             NotificationInbox(state, onNotificationAccess)
@@ -200,7 +204,7 @@ internal fun AgentShellContent(
                     }
                 }
             }
-        }
+            }
     }
 }
 
@@ -233,7 +237,6 @@ private fun VoiceCard(state: AgentUiState, onVoiceSettings: () -> Unit) {
 private fun HistoryMindMap(
     state: AgentUiState,
     onToggle: () -> Unit,
-    onClear: () -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -249,38 +252,70 @@ private fun HistoryMindMap(
                 Column {
                     Text("历史知识图", fontWeight = FontWeight.Bold)
                     Text(
-                        "本机私有 · ${state.history.size}/100 个有来源节点",
+                        "本机私有 · ${state.history.size} 段历史 · ${state.knowledgeGraph.relations.size} 条关系",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 TextButton(onClick = onToggle) { Text(if (state.showHistory) "收起" else "查看") }
             }
-            if (state.showHistory) {
-                if (state.history.isEmpty()) {
-                    Text("完成一次任务后，这里会生成“目标 → 结果”的可追溯节点。",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
-                    val recent = state.history.takeLast(20)
-                    Text("● 我的 AgentOS", color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold)
-                    recent.forEachIndexed { index, entry ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(if (index == recent.lastIndex) "└─" else "├─",
-                                color = MaterialTheme.colorScheme.primary)
-                            Column {
-                                Text(entry.prompt, maxLines = 2, fontWeight = FontWeight.SemiBold)
-                                Text("→ ${entry.responseTitle}", maxLines = 1,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
+        }
+    }
+}
+
+@Composable
+private fun KnowledgeScreen(state: AgentUiState, onBack: () -> Unit, onClear: () -> Unit) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 18.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = onBack) { Text("返回") }
+                TextButton(onClick = onClear, enabled = state.history.isNotEmpty()) { Text("清除全部") }
+            }
+        }
+        item {
+            Text("语义知识图谱", style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold)
+            Text("${state.knowledgeGraph.entities.size} 个实体 · ${state.knowledgeGraph.relations.size} 条关系 · 全部带原文来源",
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (state.knowledgeGraph.relations.isEmpty()) {
+            item { Text("历史中暂未提取到人物、关系、偏好、项目或长期事实。") }
+        } else {
+            item { Text("● 用户知识", color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold) }
+            items(state.knowledgeGraph.relations, key = { "${it.sourceTurnId}:${it.source.id}:${it.predicate}:${it.target.id}:${it.evidence}" }) { relation ->
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("${relation.source.name}  ─${relation.predicate}→  ${relation.target.name}",
+                            fontWeight = FontWeight.SemiBold)
+                        Text("${relation.source.type} → ${relation.target.type} · ${if (relation.confirmed) "原文明示" else "模型候选"} · ${(relation.confidence * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary)
+                        Text("来源：${relation.evidence}", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                }
-                TextButton(onClick = onClear, enabled = state.history.isNotEmpty()) {
-                    Text("清除本机历史")
                 }
             }
         }
+        item {
+            Text("全部历史（${state.history.size}）", style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
+        }
+        items(state.history.asReversed(), key = ConversationEntry::id) { entry ->
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(entry.prompt, fontWeight = FontWeight.SemiBold)
+                    Text("→ ${entry.responseTitle}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        item { Spacer(Modifier.size(18.dp)) }
     }
 }
 

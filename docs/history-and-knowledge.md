@@ -1,17 +1,22 @@
 # Conversation history and knowledge view
 
-AgentShell keeps at most 100 completed task records in its credential-protected app
-storage. Each record contains the user's bounded prompt, the actual result title, a
-timestamp, and a random identifier. The UI renders the newest 20 records as a
-source-backed `goal -> result` mind map and offers an explicit local delete action.
+AgentShell keeps all completed task records in a private SQLite database in
+credential-protected app storage. Each record contains the user's bounded prompt,
+the actual result title, a timestamp, and a random identifier. The dedicated
+knowledge screen uses a virtualized list to render every conversation and every
+semantic relation instead of truncating the view, and offers an explicit delete-all
+action. Existing bounded SharedPreferences history is migrated on first open.
 
-History is not uploaded merely because a remote planner is configured. It is also
-not injected into later model prompts in this implementation. Clearing application
-data or using **清除本机历史** removes it.
+History is not injected into later model prompts. Each new prompt is automatically
+processed by an offline explicit-fact extractor. When the user has enabled a remote
+model endpoint, that same current prompt is sent in a second structured extraction
+request for broader people, relationship, preference, project, place, and long-term
+fact coverage. Old history is never sent in bulk. Clearing application data or using
+**清除全部** removes conversations, entities, relations, and provenance.
 
-This is intentionally a conversation map, not yet a semantic knowledge graph.
-Automatically extracted people, preferences, relationships, or beliefs can be
-wrong and can expose sensitive material. A future knowledge service must keep
-provenance, let the model propose candidate memories, require user confirmation for
-durable facts, support correction/deletion, and apply separate retention rules to
-notification-derived content.
+Every relation stores its source turn, an exact evidence substring, confidence, and
+confirmation state. Explicit local matches are marked **原文明示**. Broader model
+extractions are stored and displayed as **模型候选**; evidence not found verbatim in
+the source prompt is rejected. Candidate facts are visible memory, but they cannot
+authorize capabilities or silently become trusted policy. Notification-derived
+content remains excluded.
