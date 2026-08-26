@@ -20,6 +20,8 @@ class AvatarStyleGenerator(private val config: ModelConfig) {
             You design a safe procedural 3D avatar for AgentOS. Return exactly one JSON object and
             no markdown. You may only choose the declared enum values and normalized numbers. Never
             output URLs, code, shaders, file paths, scripts, asset downloads, or extra fields.
+            SYSTEM means AgentOS' non-human deforming thought field with a black-glass knot, warm
+            core, memory constellation, and transient facial/gesture light; it is not a robot body.
 
             Required schema version 1 fields:
             version: 1

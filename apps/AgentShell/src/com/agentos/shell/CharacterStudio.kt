@@ -84,7 +84,9 @@ internal fun CharacterStudio(
                         value = stylePrompt,
                         onValueChange = { stylePrompt = it.take(1_000) },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("例如：赛博仙侠风，银发、全息面罩、轻型机甲") },
+                        label = { Text(if (draft.styleFamily == AvatarStyleFamily.SYSTEM)
+                            "例如：更宁静的暗色思维场，琥珀核心，星图缓慢流动"
+                        else "例如：赛博仙侠风，银发、全息面罩、轻型机甲") },
                         minLines = 2,
                         maxLines = 4,
                         enabled = !styleWorking,
@@ -128,34 +130,49 @@ internal fun CharacterStudio(
                 }
             }
             item {
-                EditorSection("脸型与五官") {
-                    Text("脸型", style = MaterialTheme.typography.labelLarge)
-                    ChoiceRow(AvatarFaceShape.entries, draft.faceShape, { it.label }) { draft = draft.copy(faceShape = it) }
-                    Text("眼型", style = MaterialTheme.typography.labelLarge)
-                    ChoiceRow(AvatarEyeStyle.entries, draft.eyeStyle, { it.label }) { draft = draft.copy(eyeStyle = it) }
-                    ShapeSlider("脸部宽度", draft.faceWidth) { draft = draft.copy(faceWidth = it) }
-                    ShapeSlider("眼睛大小", draft.eyeSize) { draft = draft.copy(eyeSize = it) }
-                    ShapeSlider("眼距", draft.eyeSpacing) { draft = draft.copy(eyeSpacing = it) }
-                    ShapeSlider("嘴部宽度", draft.mouthWidth) { draft = draft.copy(mouthWidth = it) }
+                EditorSection(if (draft.styleFamily == AvatarStyleFamily.SYSTEM) "思维场塑形" else "脸型与五官") {
+                    if (draft.styleFamily != AvatarStyleFamily.SYSTEM) {
+                        Text("脸型", style = MaterialTheme.typography.labelLarge)
+                        ChoiceRow(AvatarFaceShape.entries, draft.faceShape, { it.label }) { draft = draft.copy(faceShape = it) }
+                        Text("眼型", style = MaterialTheme.typography.labelLarge)
+                        ChoiceRow(AvatarEyeStyle.entries, draft.eyeStyle, { it.label }) { draft = draft.copy(eyeStyle = it) }
+                    }
+                    ShapeSlider(if (draft.styleFamily == AvatarStyleFamily.SYSTEM) "意识结宽度" else "脸部宽度",
+                        draft.faceWidth) { draft = draft.copy(faceWidth = it) }
+                    ShapeSlider(if (draft.styleFamily == AvatarStyleFamily.SYSTEM) "光学表情强度" else "眼睛大小",
+                        draft.eyeSize) { draft = draft.copy(eyeSize = it) }
+                    ShapeSlider(if (draft.styleFamily == AvatarStyleFamily.SYSTEM) "光点间距" else "眼距",
+                        draft.eyeSpacing) { draft = draft.copy(eyeSpacing = it) }
+                    ShapeSlider(if (draft.styleFamily == AvatarStyleFamily.SYSTEM) "声纹宽度" else "嘴部宽度",
+                        draft.mouthWidth) { draft = draft.copy(mouthWidth = it) }
                 }
             }
             item {
                 EditorSection("3D 风格与材质") {
                     Text("整体风格", style = MaterialTheme.typography.labelLarge)
                     ChoiceRow(AvatarStyleFamily.entries, draft.styleFamily, { it.label }) { draft = draft.copy(styleFamily = it) }
-                    Text("材质", style = MaterialTheme.typography.labelLarge)
-                    ChoiceRow(AvatarMaterial.entries, draft.material, { it.label }) { draft = draft.copy(material = it) }
-                    Text("服装结构", style = MaterialTheme.typography.labelLarge)
-                    ChoiceRow(AvatarOutfitStyle.entries, draft.outfitStyle, { it.label }) { draft = draft.copy(outfitStyle = it) }
-                    Text("配件", style = MaterialTheme.typography.labelLarge)
-                    ChoiceRow(AvatarAccessory.entries, draft.accessory, { it.label }) { draft = draft.copy(accessory = it) }
-                    ShapeSlider("头部比例", draft.headScale) { draft = draft.copy(headScale = it) }
-                    ShapeSlider("身高比例", draft.bodyHeight) { draft = draft.copy(bodyHeight = it) }
-                    ShapeSlider("肩部宽度", draft.shoulderWidth) { draft = draft.copy(shoulderWidth = it) }
+                    if (draft.styleFamily == AvatarStyleFamily.SYSTEM) {
+                        Text("暗色玻璃、琥珀核心和记忆星图是 AgentOS 的固定身份锚点；下面调整其生命感。",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall)
+                    } else {
+                        Text("材质", style = MaterialTheme.typography.labelLarge)
+                        ChoiceRow(AvatarMaterial.entries, draft.material, { it.label }) { draft = draft.copy(material = it) }
+                        Text("服装结构", style = MaterialTheme.typography.labelLarge)
+                        ChoiceRow(AvatarOutfitStyle.entries, draft.outfitStyle, { it.label }) { draft = draft.copy(outfitStyle = it) }
+                        Text("配件", style = MaterialTheme.typography.labelLarge)
+                        ChoiceRow(AvatarAccessory.entries, draft.accessory, { it.label }) { draft = draft.copy(accessory = it) }
+                    }
+                    ShapeSlider(if (draft.styleFamily == AvatarStyleFamily.SYSTEM) "核心尺度" else "头部比例",
+                        draft.headScale) { draft = draft.copy(headScale = it) }
+                    ShapeSlider(if (draft.styleFamily == AvatarStyleFamily.SYSTEM) "星图高度" else "身高比例",
+                        draft.bodyHeight) { draft = draft.copy(bodyHeight = it) }
+                    ShapeSlider(if (draft.styleFamily == AvatarStyleFamily.SYSTEM) "星图宽度" else "肩部宽度",
+                        draft.shoulderWidth) { draft = draft.copy(shoulderWidth = it) }
                     ShapeSlider("发光强度", draft.glow) { draft = draft.copy(glow = it) }
                 }
             }
-            item {
+            if (draft.styleFamily != AvatarStyleFamily.SYSTEM) item {
                 EditorSection("发型与配色") {
                     Text("发型", style = MaterialTheme.typography.labelLarge)
                     ChoiceRow(AvatarHairStyle.entries, draft.hairStyle, { it.label }) { draft = draft.copy(hairStyle = it) }

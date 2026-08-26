@@ -7,7 +7,7 @@ Buildable AgentOS product code for AOSP 17. The
 [`agentos`](https://github.com/kairowan/agentos) bootstrap checks this repository
 out at `vendor/agentos` inside the AOSP source tree.
 
-![AgentOS original non-human 3D character interface](docs/images/ui-v2/home-v6.png)
+![AgentOS deforming 3D thought-field interface](docs/images/ui-v2/home-v7.png)
 
 The image above is the current high-fidelity UI baseline. It mirrors the native
 Compose implementation but is not presented as an emulator screenshot. The full
@@ -62,10 +62,11 @@ The home surface is now the device-local 3D virtual character itself instead of 
 dashboard around an avatar. Native idle motion, blink, gaze, listening, thinking,
 speaking/lip motion, and bounded gestures are blended from runtime state and the
 validated model response.
-The default is the original, genderless AgentOS Native Form—a split seed shell,
-optical expression membrane, suspended core, and orbiting memory cells—rather than
-a human or anime assistant mascot. Human, anime, fantasy, and other styles remain
-explicit user customizations in Character Studio.
+The default is the original, genderless AgentOS Thought Field—a deforming black-glass
+consciousness knot, warm core, flowing particles, and dynamic memory constellation—
+rather than a human, robot, or anime assistant mascot. Its face and gesture geometry
+condense only while needed and dissolve back into the field. Human, anime, fantasy,
+and other styles remain explicit user customizations in Character Studio.
 Its expression follows listening, thinking, speaking, and attention state. A native
 OpenGL ES renderer provides an orbit camera, procedural body/face geometry, materials,
 hair, outfits, accessories, continuous shaping, expression previews, and local

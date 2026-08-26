@@ -6,21 +6,26 @@ renderer; this is not a WebView, prerecorded video, or flat sticker.
 
 ## Original visual identity
 
-The default `SYSTEM` family is the AgentOS Native Form. It is intentionally
-genderless and non-human: an asymmetric split-seed head shell surrounds a luminous
-optical expression membrane; a suspended energy core and three protective petals
-replace clothing and human anatomy; detached motion segments, an orbit of ten
-memory cells, and three crown nodes create its signature silhouette. The eyes and
-elastic light-mouth still support gaze, emotion, interruption, and TTS lip motion.
+The default `SYSTEM` family is the AgentOS Thought Field. It is intentionally
+genderless, non-human, and not a robot mascot: overlapping deformable black-glass
+lobes form a living consciousness knot around one warm amber core. A deterministic
+particle stream and constellation links visualize thought and long-term memory.
+There is no permanent head, torso, clothing, or pair of limbs. Eyes, a voice mark,
+and one flowing gesture limb condense only when communication needs them, then
+dissolve back into the field. The voice mark follows TTS rhythm while gaze, color,
+field speed, and deformation carry listening, thinking, concern, and delight.
 
 Human, anime, fantasy, and semi-realistic families are optional user-created
 identities, never the product's default or brand anchor.
 
 ## Runtime
 
-- native `GLSurfaceView`/OpenGL ES 2.0 pipeline with depth testing and lit materials;
+- native `GLSurfaceView`/OpenGL ES 2.0 pipeline with depth testing, alpha blending,
+  lit materials, vertex deformation, point sprites, and constellation lines;
 - reusable UV-sphere mesh, transformed into the head, body, eyes, hair, clothing,
   accessories, and expression geometry;
+- fixed reusable buffers for 144 moving thought particles and 36 memory links, with
+  no per-frame mesh allocation and only two extra field draw calls;
 - orbital inspection camera: drag to rotate and pinch to zoom;
 - visibility-bound 30 fps rendering for natural motion without an unrestricted loop;
 - four material responses: matte, gloss, metal, and hologram;
@@ -28,8 +33,9 @@ identities, never the product's default or brand anchor.
 - minimal, suit, armor, robe, and streetwear silhouettes;
 - visor, headset, halo, horn, or no accessory;
 - eight runtime expressions linked to listening, thinking, speaking, and attention;
-- layered breathing, body sway, blink, gaze, TTS mouth motion, nod, wave, point,
-  celebrate, comfort, and explanation gestures.
+- layered breathing, body sway, blink, gaze, TTS voice-mark motion, nod, wave, point,
+  celebrate, comfort, and explanation gestures. The `SYSTEM` family expresses
+  gestures through temporary flowing geometry instead of a fixed skeletal arm.
 
 The remote planner may select one emotion and gesture plus bounded intensity, tempo,
 and gaze values in `generated-ui.schema.json`. Unknown motion names, extra fields,
@@ -38,9 +44,10 @@ wins: listening, thinking, interruption, and TTS playback override a conflicting
 model direction, while the native idle layer keeps every accepted pose from looking
 mechanically frozen.
 
-The editor also exposes face shape, hair, eye style, skin/hair/outfit colors, face
-width, eye size and spacing, mouth width, head scale, body height, shoulder width,
-and glow. The avatar profile remains in AgentShell's private local storage.
+The editor adapts to the selected family. `SYSTEM` exposes consciousness-knot width,
+optical expression, light spacing, voice-mark width, core scale, constellation
+height/width, and glow. Human-derived families expose face, hair, clothing, material,
+and accessory controls. The avatar profile remains in AgentShell's private storage.
 
 ## Large-model style generation
 

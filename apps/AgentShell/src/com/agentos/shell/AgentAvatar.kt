@@ -16,7 +16,7 @@ enum class AvatarOutfitColor(val label: String, val argb: Long) {
     MINT("薄荷", 0xFF36BFA0), BLUE("深蓝", 0xFF426DAE), AMBER("琥珀", 0xFFC68B32), VIOLET("紫罗兰", 0xFF7253A6), GRAPHITE("石墨", 0xFF33464E),
 }
 enum class AvatarStyleFamily(val label: String) {
-    SYSTEM("AgentOS 原生体"), SOFT("柔和潮玩"), ANIME("二次元"), CYBER("赛博未来"),
+    SYSTEM("AgentOS 思维场"), SOFT("柔和潮玩"), ANIME("二次元"), CYBER("赛博未来"),
     FANTASY("幻想风格"), REALISTIC("半写实"),
 }
 enum class AvatarMaterial(val label: String) { MATTE("哑光"), GLOSS("亮面"), METAL("金属"), HOLOGRAM("全息") }
@@ -39,7 +39,7 @@ data class AgentAvatar(
     val material: AvatarMaterial = AvatarMaterial.HOLOGRAM,
     val outfitStyle: AvatarOutfitStyle = AvatarOutfitStyle.MINIMAL,
     val accessory: AvatarAccessory = AvatarAccessory.NONE,
-    val styleDescription: String = "由浮游单元、记忆环与光学表情构成的 AgentOS 原生生命体",
+    val styleDescription: String = "由暗色玻璃意识结、思维流与动态记忆星图构成的可变形系统意识",
     val faceWidth: Float = 0.5f,
     val eyeSize: Float = 0.55f,
     val eyeSpacing: Float = 0.5f,
@@ -124,7 +124,7 @@ class LocalAgentAvatarStore(context: Context) : AgentAvatarStore {
         outfitStyle = enumValue("outfit_style", AvatarOutfitStyle.MINIMAL),
         accessory = enumValue("accessory", AvatarAccessory.NONE),
         styleDescription = prefs.getString("style_description", null)
-            ?: "由浮游单元、记忆环与光学表情构成的 AgentOS 原生生命体",
+            ?: "由暗色玻璃意识结、思维流与动态记忆星图构成的可变形系统意识",
         faceWidth = prefs.getFloat("face_width", 0.5f),
         eyeSize = prefs.getFloat("eye_size", 0.55f),
         eyeSpacing = prefs.getFloat("eye_spacing", 0.5f),

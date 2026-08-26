@@ -31,7 +31,7 @@ device screenshots. Runtime verification must still be performed on an AOSP buil
 
 | Agent home | Character studio |
 | --- | --- |
-| ![AgentOS home screen](images/ui-v2/home-v6.png) | ![AgentOS 3D character studio](images/ui-v2/character-studio-v5.png) |
+| ![AgentOS home screen](images/ui-v2/home-v7.png) | ![AgentOS 3D character studio](images/ui-v2/character-studio-v6.png) |
 
 | App capability center | Native camera |
 | --- | --- |

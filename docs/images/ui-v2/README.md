@@ -7,9 +7,11 @@ focused on one visible target while the full AOSP image is being built.
 
 ## Screens
 
-- `home-v6.png`: current full-screen home with the original non-human AgentOS Native Form;
+- `home-v7.png`: current full-screen home with the deforming AgentOS Thought Field;
+- `home-v6.png`: previous split-seed native-form home;
 - `home-v4.png`: previous card-based 3D avatar home;
-- `character-studio-v5.png`: current studio with the AgentOS Native Form in its OpenGL viewport;
+- `character-studio-v6.png`: current studio with thought-field shaping controls;
+- `character-studio-v5.png`: previous split-seed native-form studio;
 - `character-studio-v4.png`: previous human character studio baseline;
 - `home-v3.png` and `character-studio-v3.png`: previous 2D character baseline;
 - `home-v2.png`: previous orb-based home retained as the v2 historical reference;
@@ -31,10 +33,13 @@ Screen-specific prompts require:
 
 - Home: one full-screen speaking 3D character, natural gesture, tiny status/settings
   controls, a transient subtitle, one voice pill, and a collapsed keyboard fallback;
-  no permanent capability cards or result dashboard.
+  no permanent capability cards or result dashboard. The default character is an
+  asymmetric deforming black-glass consciousness knot with a warm amber core,
+  flowing particles, memory-constellation links, and only transient facial light;
+  it must not read as a human, anime mascot, seed robot, or another assistant brand.
 - Character Studio: native 3D avatar viewport, orbit gestures, expression previews,
-  face/body shaping, hair/outfit/accessory/material controls, a model style prompt,
-  randomize, reset, and save.
+  thought-field shaping for the `SYSTEM` family, human-family controls when relevant,
+  a model style prompt, randomize, reset, and save.
 - App Bridge: provider/semantic tabs, app/package search, domain chips, provider
   capabilities, and explicit confirmation before opening or sensitive actions.
 - Camera: native Camera2 preview, tap-to-focus, zoom, photo/video selection,
