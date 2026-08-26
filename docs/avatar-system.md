@@ -26,7 +26,7 @@ identities, never the product's default or brand anchor.
 - reusable UV-sphere mesh, transformed into the head, body, eyes, hair, clothing,
   accessories, and expression geometry;
 - no image texture, generated portrait, downloaded model, or per-frame CPU geometry
-  is used by the default identity: black glass, nine internal filaments, moving motes,
+  is used by the default identity: black glass, sixteen internal filaments, moving motes,
   constellation links, core bloom, optical face, and temporary gesture are evaluated
   from the bundled `thought_field_fragment.glsl` for every rendered frame;
 - orbital inspection camera: drag to rotate and pinch to zoom;
