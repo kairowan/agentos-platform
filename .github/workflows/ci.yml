@@ -32,4 +32,5 @@ jobs:
           path: |
             apps/AgentShell/build/outputs/apk/debug/AgentShell-debug.apk
             services/AgentCapabilityService/build/outputs/apk/debug/AgentCapabilityService-debug.apk
+            services/AgentMediaService/build/outputs/apk/debug/AgentMediaService-debug.apk
           if-no-files-found: error

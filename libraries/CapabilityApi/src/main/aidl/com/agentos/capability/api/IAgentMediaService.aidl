@@ -7,9 +7,10 @@ import com.agentos.capability.api.MediaItem;
 interface IAgentMediaService {
     void registerListener(IAgentMediaListener listener);
     void unregisterListener(IAgentMediaListener listener);
-    void openCamera(in Surface previewSurface, int width, int height, int lensFacing);
+    void openCamera(in Surface previewSurface, int width, int height, int lensFacing, int displayRotation);
     void closeCamera();
     void setZoom(float ratio);
+    void focus(float normalizedX, float normalizedY);
     void capturePhoto();
     void startVideo(boolean withAudio);
     void stopVideo();

@@ -47,10 +47,11 @@ internal class AgentMediaClient(context: Context) : AutoCloseable {
         Context.BIND_AUTO_CREATE,
     ).also { if (!it) remote.completeExceptionally(IllegalStateException("Media Service unavailable")) }
 
-    suspend fun openCamera(surface: Surface, width: Int, height: Int, lens: Int) =
-        call { it.openCamera(surface, width, height, lens) }
+    suspend fun openCamera(surface: Surface, width: Int, height: Int, lens: Int, displayRotation: Int) =
+        call { it.openCamera(surface, width, height, lens, displayRotation) }
     suspend fun closeCamera() = call { it.closeCamera() }
     suspend fun setZoom(ratio: Float) = call { it.setZoom(ratio) }
+    suspend fun focus(x: Float, y: Float) = call { it.focus(x, y) }
     suspend fun capturePhoto() = call { it.capturePhoto() }
     suspend fun startVideo(withAudio: Boolean = true) = call { it.startVideo(withAudio) }
     suspend fun stopVideo() = call { it.stopVideo() }

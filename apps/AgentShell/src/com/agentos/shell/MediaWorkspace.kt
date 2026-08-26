@@ -7,6 +7,7 @@ import android.view.SurfaceView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -52,10 +54,11 @@ import kotlin.math.max
 internal fun MediaWorkspace(
     state: MediaWorkspaceState,
     onClose: () -> Unit,
-    onAttachSurface: (android.view.Surface, Int, Int) -> Unit,
+    onAttachSurface: (android.view.Surface, Int, Int, Int) -> Unit,
     onDetachSurface: () -> Unit,
     onSwitchCamera: () -> Unit,
     onZoom: (Float) -> Unit,
+    onFocus: (Float, Float) -> Unit,
     onCapturePhoto: () -> Unit,
     onToggleVideo: () -> Unit,
     onToggleAudio: () -> Unit,
@@ -82,7 +85,7 @@ internal fun MediaWorkspace(
         }
         when (state.mode) {
             MediaWorkspaceMode.CAMERA -> CameraWorkspace(state, onAttachSurface, onDetachSurface,
-                onSwitchCamera, onZoom, onCapturePhoto, onToggleVideo)
+                onSwitchCamera, onZoom, onFocus, onCapturePhoto, onToggleVideo)
             MediaWorkspaceMode.GALLERY -> GalleryWorkspace(state, onOpenItem)
             MediaWorkspaceMode.RECORDER -> RecorderWorkspace(state, onToggleAudio, onToggleAudioPause)
             MediaWorkspaceMode.CLOSED -> Unit
@@ -97,17 +100,24 @@ internal fun MediaWorkspace(
 @Composable
 private fun CameraWorkspace(
     state: MediaWorkspaceState,
-    onAttachSurface: (android.view.Surface, Int, Int) -> Unit,
+    onAttachSurface: (android.view.Surface, Int, Int, Int) -> Unit,
     onDetachSurface: () -> Unit,
     onSwitchCamera: () -> Unit,
     onZoom: (Float) -> Unit,
+    onFocus: (Float, Float) -> Unit,
     onCapturePhoto: () -> Unit,
     onToggleVideo: () -> Unit,
 ) {
+    val displayRotation = LocalContext.current.display?.rotation ?: android.view.Surface.ROTATION_0
     DisposableEffect(Unit) { onDispose(onDetachSurface) }
     Box(
         Modifier.fillMaxWidth().aspectRatio(3f / 4f)
-            .background(Color.Black, RoundedCornerShape(24.dp)),
+            .background(Color.Black, RoundedCornerShape(24.dp))
+            .pointerInput(state.cameraReady) {
+                if (state.cameraReady) detectTapGestures { offset ->
+                    onFocus(offset.x / size.width, offset.y / size.height)
+                }
+            },
         contentAlignment = Alignment.Center,
     ) {
         AndroidView(
@@ -115,7 +125,7 @@ private fun CameraWorkspace(
                 holder.addCallback(object : SurfaceHolder.Callback {
                     override fun surfaceCreated(holder: SurfaceHolder) = Unit
                     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-                        if (holder.surface.isValid) onAttachSurface(holder.surface, width, height)
+                        if (holder.surface.isValid) onAttachSurface(holder.surface, width, height, displayRotation)
                     }
                     override fun surfaceDestroyed(holder: SurfaceHolder) = onDetachSurface()
                 })

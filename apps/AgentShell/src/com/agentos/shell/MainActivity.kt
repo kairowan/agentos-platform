@@ -84,6 +84,7 @@ class MainActivity : ComponentActivity() {
                         onDetachSurface = mediaViewModel::detachCameraSurface,
                         onSwitchCamera = mediaViewModel::switchCamera,
                         onZoom = mediaViewModel::setZoom,
+                        onFocus = mediaViewModel::focusCamera,
                         onCapturePhoto = mediaViewModel::capturePhoto,
                         onToggleVideo = mediaViewModel::toggleVideo,
                         onToggleAudio = mediaViewModel::toggleAudio,
@@ -99,8 +100,12 @@ class MainActivity : ComponentActivity() {
                 } else AgentShellContent(
                     state = state,
                     onPromptChanged = viewModel::updatePrompt,
-                    onSubmit = viewModel::submit,
-                    onSuggestion = viewModel::submit,
+                    onSubmit = {
+                        if (handleMediaCommand(state.prompt)) viewModel.updatePrompt("") else viewModel.submit()
+                    },
+                    onSuggestion = { command ->
+                        if (!handleMediaCommand(command)) viewModel.submit(command)
+                    },
                     onToggleModelSettings = viewModel::toggleModelSettings,
                     onRemoteModelEnabled = viewModel::setRemoteModelEnabled,
                     onModelEndpointChanged = viewModel::updateModelEndpoint,
@@ -139,11 +144,29 @@ class MainActivity : ComponentActivity() {
         intent.action = null
         when (action) {
             VoiceCommandReceiver.ACTION_RUN_COMMAND ->
-                VoiceCommandInbox.take(token)?.let(viewModel::submitVoice)
+                VoiceCommandInbox.take(token)?.let { command ->
+                    if (!handleMediaCommand(command)) viewModel.submitVoice(command)
+                }
             VoiceCommandReceiver.ACTION_INTERRUPT -> if (VoiceInterruptInbox.take(token)) {
                 voiceOutput?.stop()
                 viewModel.interruptVoiceTurn()
             }
+        }
+    }
+
+    private fun handleMediaCommand(raw: String): Boolean {
+        val command = raw.trim().replace("。", "").replace("！", "")
+        return when (command) {
+            "打开相机", "开启相机" -> true.also { mediaViewModel.open(MediaWorkspaceMode.CAMERA) }
+            "拍照", "帮我拍照", "拍一张照片" -> true.also { mediaViewModel.requestPhoto() }
+            "开始录像", "录像" -> true.also { mediaViewModel.requestVideo() }
+            "停止录像" -> true.also { if (mediaViewModel.state.value.videoRecording) mediaViewModel.toggleVideo() }
+            "打开图库", "打开相册", "查看照片" -> true.also { mediaViewModel.open(MediaWorkspaceMode.GALLERY) }
+            "打开录音机" -> true.also { mediaViewModel.open(MediaWorkspaceMode.RECORDER) }
+            "开始录音", "录音" -> true.also { mediaViewModel.requestAudioRecording() }
+            "暂停录音", "继续录音" -> true.also { if (mediaViewModel.state.value.audioRecording) mediaViewModel.toggleAudioPause() }
+            "停止录音" -> true.also { if (mediaViewModel.state.value.audioRecording) mediaViewModel.toggleAudio() }
+            else -> false
         }
     }
 

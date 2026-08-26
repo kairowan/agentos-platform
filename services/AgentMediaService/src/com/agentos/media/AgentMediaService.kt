@@ -11,12 +11,14 @@ import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.graphics.Rect
 import android.graphics.ImageFormat
 import android.hardware.camera2.CameraCaptureSession
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
 import android.hardware.camera2.CaptureRequest
+import android.hardware.camera2.params.MeteringRectangle
 import android.media.ImageReader
 import android.media.MediaRecorder
 import android.net.Uri
@@ -54,8 +56,13 @@ class AgentMediaService : Service() {
     private var cameraId: String? = null
     private var lensFacing = MediaContract.LENS_BACK
     private var sensorOrientation = 0
+    private var displayRotation = Surface.ROTATION_0
+    private var cameraGeneration = 0
     private var maximumZoom = 1f
     private var currentZoom = 1f
+    private var activeArray: Rect? = null
+    private var maximumAfRegions = 0
+    private var maximumAeRegions = 0
     private var videoSize = Size(1920, 1080)
 
     private var recorder: MediaRecorder? = null
@@ -74,14 +81,21 @@ class AgentMediaService : Service() {
         override fun unregisterListener(listener: IAgentMediaListener) {
             enforceAuthorizedCaller(); listeners.unregister(listener)
         }
-        override fun openCamera(surface: Surface, width: Int, height: Int, lens: Int) {
+        override fun openCamera(surface: Surface, width: Int, height: Int, lens: Int, rotation: Int) {
             enforceAuthorizedCaller()
             require(width in 1..MAX_SURFACE_SIZE && height in 1..MAX_SURFACE_SIZE && surface.isValid)
-            cameraHandler.post { openCameraInternal(surface, lens) }
+            require(rotation in Surface.ROTATION_0..Surface.ROTATION_270)
+            cameraHandler.post { openCameraInternal(surface, lens, rotation) }
         }
         override fun closeCamera() { enforceAuthorizedCaller(); cameraHandler.post(::closeCameraInternal) }
         override fun setZoom(ratio: Float) {
             enforceAuthorizedCaller(); cameraHandler.post { updateZoom(ratio) }
+        }
+        override fun focus(normalizedX: Float, normalizedY: Float) {
+            enforceAuthorizedCaller()
+            require(normalizedX.isFinite() && normalizedY.isFinite())
+            require(normalizedX in 0f..1f && normalizedY in 0f..1f)
+            cameraHandler.post { focusInternal(normalizedX, normalizedY) }
         }
         override fun capturePhoto() { enforceAuthorizedCaller(); cameraHandler.post(::capturePhotoInternal) }
         override fun startVideo(withAudio: Boolean) {
@@ -123,12 +137,13 @@ class AgentMediaService : Service() {
     }
 
     @SuppressLint("MissingPermission")
-    private fun openCameraInternal(surface: Surface, requestedLens: Int) {
+    private fun openCameraInternal(surface: Surface, requestedLens: Int, rotation: Int) {
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             emitError("相机权限未授予"); return
         }
         if (isAudioRecording) { emitError("录音期间不能打开相机"); return }
         closeCameraResources()
+        val generation = cameraGeneration
         val facing = if (requestedLens == MediaContract.LENS_FRONT) {
             CameraCharacteristics.LENS_FACING_FRONT
         } else CameraCharacteristics.LENS_FACING_BACK
@@ -147,6 +162,10 @@ class AgentMediaService : Service() {
             it.width <= 1920 && it.height <= 1080
         }?.maxByOrNull { it.width * it.height } ?: Size(1280, 720)
         sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
+        activeArray = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)
+        maximumAfRegions = characteristics.get(CameraCharacteristics.CONTROL_MAX_REGIONS_AF) ?: 0
+        maximumAeRegions = characteristics.get(CameraCharacteristics.CONTROL_MAX_REGIONS_AE) ?: 0
+        displayRotation = rotation
         maximumZoom = (if (android.os.Build.VERSION.SDK_INT >= 30) {
             characteristics.get(CameraCharacteristics.CONTROL_ZOOM_RATIO_RANGE)?.upper
         } else null) ?: (characteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM) ?: 1f)
@@ -161,6 +180,7 @@ class AgentMediaService : Service() {
         try {
             cameraManager.openCamera(selected, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
+                    if (generation != cameraGeneration) { camera.close(); return }
                     cameraDevice = camera
                     createPreviewSession()
                 }
@@ -206,7 +226,7 @@ class AgentMediaService : Service() {
             val request = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
                 addTarget(target)
                 set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
-                set(CaptureRequest.JPEG_ORIENTATION, sensorOrientation)
+                set(CaptureRequest.JPEG_ORIENTATION, outputOrientation())
                 applyZoom(this, currentZoom)
             }.build()
             session.capture(request, object : CameraCaptureSession.CaptureCallback() {}, cameraHandler)
@@ -248,22 +268,30 @@ class AgentMediaService : Service() {
             ?: return emitError("无法创建视频文件")
         val file = contentResolver.openFileDescriptor(uri, "w")
             ?: return contentResolver.delete(uri, null, null).let { emitError("视频输出不可用") }
-        val mediaRecorder = MediaRecorder().apply {
-            if (withAudio) setAudioSource(MediaRecorder.AudioSource.CAMCORDER)
-            setVideoSource(MediaRecorder.VideoSource.SURFACE)
-            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-            setVideoEncodingBitRate(12_000_000)
-            setVideoFrameRate(30)
-            setVideoSize(videoSize.width, videoSize.height)
-            if (withAudio) {
-                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                setAudioEncodingBitRate(128_000)
-                setAudioSamplingRate(48_000)
+        val mediaRecorder = MediaRecorder()
+        try {
+            mediaRecorder.apply {
+                if (withAudio) setAudioSource(MediaRecorder.AudioSource.CAMCORDER)
+                setVideoSource(MediaRecorder.VideoSource.SURFACE)
+                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+                setVideoEncodingBitRate(12_000_000)
+                setVideoFrameRate(30)
+                setVideoSize(videoSize.width, videoSize.height)
+                if (withAudio) {
+                    setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                    setAudioEncodingBitRate(128_000)
+                    setAudioSamplingRate(48_000)
+                }
+                setOrientationHint(outputOrientation())
+                setOutputFile(file.fileDescriptor)
+                prepare()
             }
-            setOrientationHint(sensorOrientation)
-            setOutputFile(file.fileDescriptor)
-            prepare()
+        } catch (error: Exception) {
+            runCatching { mediaRecorder.release() }
+            file.close(); contentResolver.delete(uri, null, null)
+            emitError("无法准备录像：${error.message.orEmpty()}")
+            return
         }
         try {
             captureSession?.close()
@@ -276,21 +304,42 @@ class AgentMediaService : Service() {
                 set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO)
                 applyZoom(this, currentZoom)
             }
-            camera.createCaptureSession(listOf(preview, recordSurface), sessionCallback({ session ->
-                captureSession = session
-                session.setRepeatingRequest(builder.build(), null, cameraHandler)
-                mediaRecorder.start()
-                isVideoRecording = true
-                recordingStartedAt = System.currentTimeMillis()
-                startForegroundFor(ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA or
-                    (if (withAudio) ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0), "正在录像")
-                emit(MediaEvent(MediaContract.VIDEO_STARTED, "正在录像"))
-            }), cameraHandler)
+            camera.createCaptureSession(listOf(preview, recordSurface), object : CameraCaptureSession.StateCallback() {
+                override fun onConfigured(session: CameraCaptureSession) {
+                    captureSession = session
+                    runCatching {
+                        session.setRepeatingRequest(builder.build(), null, cameraHandler)
+                        mediaRecorder.start()
+                    }.onSuccess {
+                        isVideoRecording = true
+                        recordingStartedAt = System.currentTimeMillis()
+                        startForegroundFor(ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA or
+                            (if (withAudio) ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0), "正在录像")
+                        emit(MediaEvent(MediaContract.VIDEO_STARTED, "正在录像"))
+                    }.onFailure { failVideoStart(mediaRecorder, file, uri, it) }
+                }
+
+                override fun onConfigureFailed(session: CameraCaptureSession) {
+                    failVideoStart(mediaRecorder, file, uri, IllegalStateException("相机会话配置失败"))
+                }
+            }, cameraHandler)
         } catch (error: Exception) {
-            runCatching { mediaRecorder.release() }; file.close(); contentResolver.delete(uri, null, null)
-            recorder = null; recorderFile = null; pendingVideoUri = null
-            createPreviewSession(); emitError("无法开始录像：${error.message.orEmpty()}")
+            failVideoStart(mediaRecorder, file, uri, error)
         }
+    }
+
+    private fun failVideoStart(
+        mediaRecorder: MediaRecorder,
+        file: ParcelFileDescriptor,
+        uri: Uri,
+        error: Throwable,
+    ) {
+        captureSession?.close(); captureSession = null
+        runCatching { mediaRecorder.reset() }; runCatching { mediaRecorder.release() }
+        runCatching { file.close() }; contentResolver.delete(uri, null, null)
+        recorder = null; recorderFile = null; pendingVideoUri = null; isVideoRecording = false
+        createPreviewSession()
+        emitError("无法开始录像：${error.message.orEmpty()}")
     }
 
     private fun stopVideoInternal() {
@@ -382,8 +431,46 @@ class AgentMediaService : Service() {
     private fun applyZoom(builder: CaptureRequest.Builder, zoom: Float) {
         if (android.os.Build.VERSION.SDK_INT >= 30) {
             builder.set(CaptureRequest.CONTROL_ZOOM_RATIO, zoom)
+        } else {
+            cropRegion(zoom)?.let { builder.set(CaptureRequest.SCALER_CROP_REGION, it) }
         }
-        // API 29 falls back to 1x; crop-region support can be added per target device characteristics.
+    }
+
+    private fun cropRegion(zoom: Float): Rect? {
+        val sensor = activeArray ?: return null
+        val bounds = centeredCrop(sensor.left, sensor.top, sensor.right, sensor.bottom, zoom)
+        return Rect(bounds[0], bounds[1], bounds[2], bounds[3])
+    }
+
+    private fun focusInternal(normalizedX: Float, normalizedY: Float) {
+        val session = captureSession ?: return
+        val builder = previewRequest ?: return
+        val sensor = cropRegion(currentZoom) ?: return
+        // ponytail: preview coordinates ignore crop/rotation distortion; replace with a calibrated
+        // sensor transform if target-device focus metrics show drift.
+        val x = (sensor.left + normalizedX * sensor.width()).toInt()
+        val y = (sensor.top + normalizedY * sensor.height()).toInt()
+        val halfWidth = (sensor.width() / 20).coerceAtLeast(1)
+        val halfHeight = (sensor.height() / 20).coerceAtLeast(1)
+        val region = MeteringRectangle(
+            Rect(
+                (x - halfWidth).coerceAtLeast(sensor.left),
+                (y - halfHeight).coerceAtLeast(sensor.top),
+                (x + halfWidth).coerceAtMost(sensor.right),
+                (y + halfHeight).coerceAtMost(sensor.bottom),
+            ),
+            MeteringRectangle.METERING_WEIGHT_MAX,
+        )
+        if (maximumAfRegions > 0) builder.set(CaptureRequest.CONTROL_AF_REGIONS, arrayOf(region))
+        if (maximumAeRegions > 0) builder.set(CaptureRequest.CONTROL_AE_REGIONS, arrayOf(region))
+        builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO)
+        builder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_START)
+        runCatching { session.capture(builder.build(), null, cameraHandler) }
+            .onSuccess {
+                builder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_IDLE)
+                builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+                runCatching { session.setRepeatingRequest(builder.build(), null, cameraHandler) }
+            }
     }
 
     private fun closeCameraInternal() {
@@ -394,11 +481,25 @@ class AgentMediaService : Service() {
     }
 
     private fun closeCameraResources() {
+        cameraGeneration++
         captureSession?.close(); captureSession = null
         cameraDevice?.close(); cameraDevice = null
         imageReader?.close(); imageReader = null
         previewRequest = null; previewSurface = null; cameraId = null
+        activeArray = null; maximumAfRegions = 0; maximumAeRegions = 0
         pendingPhotoUri?.let { contentResolver.delete(it, null, null) }; pendingPhotoUri = null
+    }
+
+    private fun outputOrientation(): Int {
+        val degrees = when (displayRotation) {
+            Surface.ROTATION_90 -> 90
+            Surface.ROTATION_180 -> 180
+            Surface.ROTATION_270 -> 270
+            else -> 0
+        }
+        return if (lensFacing == MediaContract.LENS_FRONT) {
+            (sensorOrientation + degrees) % 360
+        } else (sensorOrientation - degrees + 360) % 360
     }
 
     private fun sessionCallback(onConfigured: (CameraCaptureSession) -> Unit) =
@@ -494,4 +595,12 @@ class AgentMediaService : Service() {
 internal class MediaCallerPolicy(private val allowedPackage: String) {
     fun isAuthorized(packages: List<String>, signatureMatches: Boolean) =
         signatureMatches && packages.singleOrNull() == allowedPackage
+}
+
+internal fun centeredCrop(left: Int, top: Int, right: Int, bottom: Int, zoom: Float): IntArray {
+    val width = ((right - left) / zoom).toInt().coerceAtLeast(1)
+    val height = ((bottom - top) / zoom).toInt().coerceAtLeast(1)
+    val cropLeft = (left + right) / 2 - width / 2
+    val cropTop = (top + bottom) / 2 - height / 2
+    return intArrayOf(cropLeft, cropTop, cropLeft + width, cropTop + height)
 }

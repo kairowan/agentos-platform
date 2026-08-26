@@ -28,11 +28,18 @@ out at `vendor/agentos` inside the AOSP source tree.
 
 ## Current `main`: system hotword path
 
-The next platform increment moves audio capture out of AgentShell. A product-level
+The platform moves audio capture out of AgentShell. A product-level
 `VoiceInteractionService` now owns an always-on `Hey AgentOS` detector, delegates
 DSP verification to an isolated `HotwordDetectionService`, opens one on-device
 speech-recognition turn, and closes it automatically on silence. Delivery to the
 Shell uses a signature permission plus a one-time command ticket.
+
+Native media follows the same boundary. A separately sandboxed `AgentMediaService`
+owns Camera2 and MediaRecorder sessions while AgentShell supplies a native
+`SurfaceView` plus Kotlin Compose controls. The current vertical slice includes
+front/back preview, zoom, JPEG photos, H.264/AAC video, pauseable M4A recording,
+live amplitude, and a unified MediaStore gallery. See
+[`docs/media-runtime.md`](docs/media-runtime.md) for hardware-dependent limits.
 
 The same hotword can interrupt an active plan or spoken response. AgentShell keeps
 all local task history through Room/SQLite and renders every conversation plus an automatically
@@ -57,11 +64,12 @@ Install JDK 17 and Android SDK 35, then use Gradle 8.12:
 gradle testDebugUnitTest assembleDebug
 ```
 
-The two APKs are written to:
+The three APKs are written to:
 
 ```text
 apps/AgentShell/build/outputs/apk/debug/AgentShell-debug.apk
 services/AgentCapabilityService/build/outputs/apk/debug/AgentCapabilityService-debug.apk
+services/AgentMediaService/build/outputs/apk/debug/AgentMediaService-debug.apk
 ```
 
 GitHub Actions runs the same test and build for every commit and pull request.
@@ -77,7 +85,7 @@ From the AOSP tree created by the main repository:
 ```bash
 source build/envsetup.sh
 lunch agentos_cf_x86_64-aosp_current-userdebug
-m AgentShell AgentCapabilityService AgentVoiceService
+m AgentShell AgentCapabilityService AgentMediaService AgentVoiceService
 ```
 
 Use `m` instead of the two module targets to build the complete Cuttlefish image.

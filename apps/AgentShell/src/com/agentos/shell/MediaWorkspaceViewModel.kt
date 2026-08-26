@@ -38,8 +38,10 @@ internal class MediaWorkspaceViewModel(private val client: AgentMediaClient) : V
     private var surface: Surface? = null
     private var surfaceWidth = 0
     private var surfaceHeight = 0
+    private var displayRotation = android.view.Surface.ROTATION_0
     private var meterJob: Job? = null
     private var recordingStartedAt = 0L
+    private var pendingCameraAction: PendingCameraAction? = null
 
     init {
         viewModelScope.launch {
@@ -55,9 +57,19 @@ internal class MediaWorkspaceViewModel(private val client: AgentMediaClient) : V
                     MediaContract.AUDIO_SAVED -> current.copy(audioRecording = false, audioPaused = false,
                         elapsedMillis = event.durationMillis, message = event.message)
                     MediaContract.IDLE -> current.copy(cameraReady = false, videoRecording = false, message = event.message)
-                    else -> current.copy(message = event.message, videoRecording = false)
+                    MediaContract.ERROR -> current.copy(message = event.message, videoRecording = false,
+                        audioRecording = false, audioPaused = false)
+                    else -> current.copy(message = event.message)
                 } }
                 if (event.state == MediaContract.AUDIO_STARTED) startMeter()
+                if (event.state == MediaContract.CAMERA_READY) {
+                    when (pendingCameraAction) {
+                        PendingCameraAction.PHOTO -> capturePhoto()
+                        PendingCameraAction.VIDEO -> toggleVideo()
+                        null -> Unit
+                    }
+                    pendingCameraAction = null
+                }
                 if (event.state == MediaContract.AUDIO_SAVED || event.state == MediaContract.ERROR) stopMeter()
                 if (event.state in setOf(MediaContract.PHOTO_SAVED, MediaContract.VIDEO_SAVED, MediaContract.AUDIO_SAVED)) {
                     refreshGallery()
@@ -86,10 +98,10 @@ internal class MediaWorkspaceViewModel(private val client: AgentMediaClient) : V
         mutableState.value = MediaWorkspaceState()
     }
 
-    fun attachCameraSurface(value: Surface, width: Int, height: Int) {
-        surface = value; surfaceWidth = width; surfaceHeight = height
+    fun attachCameraSurface(value: Surface, width: Int, height: Int, rotation: Int) {
+        surface = value; surfaceWidth = width; surfaceHeight = height; displayRotation = rotation
         mutableState.update { it.copy(cameraReady = false, message = "正在启动相机…") }
-        viewModelScope.launch { mediaCall { client.openCamera(value, width, height, mutableState.value.lensFacing) } }
+        viewModelScope.launch { mediaCall { client.openCamera(value, width, height, mutableState.value.lensFacing, rotation) } }
     }
 
     fun detachCameraSurface() {
@@ -102,7 +114,7 @@ internal class MediaWorkspaceViewModel(private val client: AgentMediaClient) : V
         val next = if (mutableState.value.lensFacing == MediaContract.LENS_BACK) MediaContract.LENS_FRONT else MediaContract.LENS_BACK
         mutableState.update { it.copy(lensFacing = next, cameraReady = false) }
         val target = surface ?: return
-        viewModelScope.launch { mediaCall { client.openCamera(target, surfaceWidth, surfaceHeight, next) } }
+        viewModelScope.launch { mediaCall { client.openCamera(target, surfaceWidth, surfaceHeight, next, displayRotation) } }
     }
 
     fun setZoom(zoom: Float) {
@@ -110,7 +122,26 @@ internal class MediaWorkspaceViewModel(private val client: AgentMediaClient) : V
         viewModelScope.launch { mediaCall { client.setZoom(zoom) } }
     }
 
+    fun focusCamera(x: Float, y: Float) {
+        viewModelScope.launch { mediaCall { client.focus(x, y) } }
+    }
+
     fun capturePhoto() { viewModelScope.launch { mediaCall { client.capturePhoto() } } }
+
+    fun requestPhoto() {
+        if (mutableState.value.mode == MediaWorkspaceMode.CAMERA && mutableState.value.cameraReady) capturePhoto()
+        else { pendingCameraAction = PendingCameraAction.PHOTO; open(MediaWorkspaceMode.CAMERA) }
+    }
+
+    fun requestVideo() {
+        if (mutableState.value.mode == MediaWorkspaceMode.CAMERA && mutableState.value.cameraReady) toggleVideo()
+        else { pendingCameraAction = PendingCameraAction.VIDEO; open(MediaWorkspaceMode.CAMERA) }
+    }
+
+    fun requestAudioRecording() {
+        open(MediaWorkspaceMode.RECORDER)
+        if (!mutableState.value.audioRecording) toggleAudio()
+    }
     fun toggleVideo() {
         viewModelScope.launch { mediaCall {
             if (mutableState.value.videoRecording) client.stopVideo() else client.startVideo(true)
@@ -174,4 +205,6 @@ internal class MediaWorkspaceViewModel(private val client: AgentMediaClient) : V
             }
         }
     }
+
+    private enum class PendingCameraAction { PHOTO, VIDEO }
 }

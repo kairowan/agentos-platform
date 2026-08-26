@@ -4,6 +4,7 @@ Install both APKs from GitHub Releases, service first, then select AgentOS as HO
 
 ```bash
 adb install -r AgentCapabilityService-debug.apk
+adb install -r AgentMediaService-debug.apk
 adb install -r AgentShell-debug.apk
 adb shell cmd package set-home-activity com.agentos.shell/.MainActivity
 ```
