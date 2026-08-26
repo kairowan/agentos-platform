@@ -147,9 +147,9 @@ class AgentMediaService : Service() {
             it.width <= 1920 && it.height <= 1080
         }?.maxByOrNull { it.width * it.height } ?: Size(1280, 720)
         sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
-        maximumZoom = if (android.os.Build.VERSION.SDK_INT >= 30) {
+        maximumZoom = (if (android.os.Build.VERSION.SDK_INT >= 30) {
             characteristics.get(CameraCharacteristics.CONTROL_ZOOM_RATIO_RANGE)?.upper
-        } else null ?: (characteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM) ?: 1f)
+        } else null) ?: (characteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM) ?: 1f)
         currentZoom = 1f
         lensFacing = requestedLens
         cameraId = selected
