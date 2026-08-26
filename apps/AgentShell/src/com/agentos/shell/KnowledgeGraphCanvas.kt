@@ -4,6 +4,7 @@ import android.graphics.Paint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -28,8 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.detectTapGestures
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -103,12 +104,15 @@ internal fun InteractiveKnowledgeGraph(
                 .transformable(transformState)
                 .pointerInput(nodes, zoomScale, offset) {
                     detectTapGestures { tap ->
-                        val world = (tap - offset) / zoomScale
+                        val world = Offset(
+                            (tap.x - offset.x) / zoomScale,
+                            (tap.y - offset.y) / zoomScale,
+                        )
                         selected = nodes.lastOrNull { it.contains(world) }?.entity
                     }
                 },
         ) {
-            withTransform({ translate(offset.x, offset.y); scale(zoomScale, Offset.Zero) }) {
+            withTransform({ translate(offset.x, offset.y); scale(zoomScale, zoomScale, Offset.Zero) }) {
                 graph.relations.forEach { relation ->
                     val source = nodeById[relation.source.id]?.center ?: return@forEach
                     val target = nodeById[relation.target.id]?.center ?: return@forEach
