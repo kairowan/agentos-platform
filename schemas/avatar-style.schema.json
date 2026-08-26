@@ -13,7 +13,7 @@
   "properties": {
     "version": { "const": 1 },
     "styleDescription": { "type": "string", "minLength": 1, "maxLength": 200 },
-    "styleFamily": { "enum": ["SOFT", "ANIME", "CYBER", "FANTASY", "REALISTIC"] },
+    "styleFamily": { "enum": ["SYSTEM", "SOFT", "ANIME", "CYBER", "FANTASY", "REALISTIC"] },
     "material": { "enum": ["MATTE", "GLOSS", "METAL", "HOLOGRAM"] },
     "outfitStyle": { "enum": ["MINIMAL", "SUIT", "ARMOR", "ROBE", "STREET"] },
     "accessory": { "enum": ["NONE", "VISOR", "HEADSET", "HALO", "HORNS"] },

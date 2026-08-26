@@ -65,7 +65,7 @@ python3 -m json.tool "${project_root}/schemas/generated-ui.schema.json" >/dev/nu
 python3 -m json.tool "${project_root}/schemas/avatar-style.schema.json" >/dev/null
 bash -n "${project_root}/scripts/capture-hotword-diagnostics.sh"
 
-for preview in home-v5 character-studio-v4 app-bridge-v2 camera-v2 knowledge-v2; do
+for preview in home-v6 character-studio-v5 app-bridge-v2 camera-v2 knowledge-v2; do
   test -s "${project_root}/docs/images/ui-v2/${preview}.png"
 done
 

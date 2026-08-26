@@ -24,7 +24,7 @@ class AvatarStyleGenerator(private val config: ModelConfig) {
             Required schema version 1 fields:
             version: 1
             styleDescription: Chinese string, 1..200 characters
-            styleFamily: SOFT | ANIME | CYBER | FANTASY | REALISTIC
+            styleFamily: SYSTEM | SOFT | ANIME | CYBER | FANTASY | REALISTIC
             material: MATTE | GLOSS | METAL | HOLOGRAM
             outfitStyle: MINIMAL | SUIT | ARMOR | ROBE | STREET
             accessory: NONE | VISOR | HEADSET | HALO | HORNS

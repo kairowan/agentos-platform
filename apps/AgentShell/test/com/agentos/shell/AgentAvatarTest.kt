@@ -7,6 +7,16 @@ import org.junit.Test
 
 class AgentAvatarTest {
     @Test
+    fun defaultAvatarUsesAgentOsOriginalNonHumanStyle() {
+        val avatar = AgentAvatar()
+
+        assertEquals(AvatarStyleFamily.SYSTEM, avatar.styleFamily)
+        assertEquals(AvatarHairStyle.BALD, avatar.hairStyle)
+        assertEquals(AvatarMaterial.HOLOGRAM, avatar.material)
+        assertEquals(AvatarOutfitColor.GRAPHITE, avatar.outfitColor)
+    }
+
+    @Test
     fun normalizesPersistedAndUserControlledValues() {
         val avatar = AgentAvatar(name = "   ", styleDescription = " ", faceWidth = -1f,
             eyeSize = 2f, eyeSpacing = -3f, mouthWidth = 4f, headScale = 2f, glow = -1f)

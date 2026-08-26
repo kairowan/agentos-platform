@@ -158,11 +158,16 @@ private class AvatarRenderer : GLSurfaceView.Renderer {
         val gestureNod = if (direction.gesture == AvatarGesture.NOD) sin(seconds * 5.5f) * 0.06f * strength else 0f
         val talkBeat = if (direction.gesture == AvatarGesture.TALK) sin(seconds * 3.8f) * 8f * strength else 0f
         val bodyX = idleSway + if (direction.gesture == AvatarGesture.CELEBRATE) sin(seconds * 3f) * 0.06f else 0f
+        if (value.styleFamily == AvatarStyleFamily.SYSTEM) {
+            drawSystemAvatar(value, mood, direction, seconds, breath, bodyX)
+            return
+        }
         val skin = value.skinTone.argb.rgb()
         val hair = value.hairColor.argb.rgb()
         val outfit = value.outfitColor.argb.rgb()
         val ink = 0xFF172126.rgb()
         val accent = when (value.styleFamily) {
+            AvatarStyleFamily.SYSTEM -> 0xFF68F5CE.rgb()
             AvatarStyleFamily.CYBER -> 0xFF68F5CE.rgb()
             AvatarStyleFamily.FANTASY -> 0xFFC79BFF.rgb()
             AvatarStyleFamily.ANIME -> 0xFF84AFFF.rgb()
@@ -259,6 +264,112 @@ private class AvatarRenderer : GLSurfaceView.Renderer {
 
         drawHair(value, hair, head, gloss, glow, bodyX, headY - 0.62f)
         drawAccessory(value.accessory, accent, head, gloss, glow, bodyX, headY - 0.62f)
+    }
+
+    /**
+     * AgentOS' own non-human silhouette: floating memory cells around a luminous core.
+     * It deliberately avoids hair, clothing and realistic facial anatomy used by assistant mascots.
+     */
+    private fun drawSystemAvatar(
+        value: AgentAvatar,
+        mood: AvatarExpression,
+        direction: AvatarPerformance,
+        seconds: Float,
+        breath: Float,
+        bodyX: Float,
+    ) {
+        val shell = 0xFF182A32.rgb()
+        val shellLight = 0xFF314851.rgb()
+        val mint = 0xFF68F5CE.rgb()
+        val sky = 0xFF84AFFF.rgb()
+        val face = 0xFFDDFBF3.rgb()
+        val glow = 0.42f + value.glow * 0.5f
+        val strength = direction.intensity
+        val pulse = 1f + sin(seconds * 2.4f) * 0.035f
+        val nod = if (direction.gesture == AvatarGesture.NOD) sin(seconds * 5.5f) * 0.055f else 0f
+        val headY = 0.72f + breath + nod
+        val blink = (SystemClock.uptimeMillis() % 4_600L) in 0L..115L
+        val eyeHeight = when {
+            blink -> 0.018f
+            mood == AvatarExpression.HAPPY -> 0.035f
+            mood == AvatarExpression.SURPRISED -> 0.12f
+            else -> 0.075f
+        }
+        val gazeX = direction.gazeX * 0.04f
+        val gazeY = direction.gazeY * 0.025f
+
+        // Split seed-like head shell and a soft optical face: recognizable without human likeness.
+        drawPart(bodyX - 0.27f, headY, 0f, 0.48f, 0.66f, 0.5f, shell, 0.72f, glow)
+        drawPart(bodyX + 0.27f, headY, 0f, 0.48f, 0.66f, 0.5f, shellLight, 0.72f, glow)
+        drawPart(bodyX, headY - 0.02f, 0.47f, 0.46f, 0.5f, 0.1f, face, 0.35f, glow)
+        drawPart(bodyX - 0.16f + gazeX, headY + 0.1f + gazeY, 0.58f,
+            0.055f, eyeHeight, 0.025f, sky, 0.82f, 0.8f)
+        drawPart(bodyX + 0.16f + gazeX, headY + 0.1f + gazeY, 0.58f,
+            0.055f, eyeHeight, 0.025f, mint, 0.82f, 0.8f)
+        val mouthOpen = when (mood) {
+            AvatarExpression.SPEAKING -> 0.035f + abs(sin(seconds * 9f)) * 0.08f
+            AvatarExpression.SURPRISED -> 0.1f
+            AvatarExpression.HAPPY -> 0.035f
+            else -> 0.018f
+        }
+        drawPart(bodyX, headY - 0.17f, 0.59f, 0.14f, mouthOpen, 0.022f, mint, 0.7f, 0.8f)
+
+        // Three orbiting memory nodes form a crown and visibly react while thinking.
+        repeat(3) { index ->
+            val phase = seconds * (if (direction.gesture == AvatarGesture.THINK) 1.8f else 0.5f) + index * 2.1f
+            drawPart(bodyX + (index - 1) * 0.24f + sin(phase) * 0.025f,
+                headY + 0.78f + cos(phase) * 0.035f, 0f,
+                0.07f, 0.07f, 0.07f, if (index == 1) sky else mint, 0.8f, glow)
+        }
+
+        // A suspended core and protective petals replace a conventional clothed torso.
+        drawPart(bodyX, -0.33f + breath, 0f, 0.34f * pulse, 0.47f * pulse, 0.3f, mint, 0.86f, glow)
+        drawPart(bodyX - 0.38f, -0.34f + breath, 0f, 0.32f, 0.7f, 0.28f, shell, 0.74f, glow)
+        drawPart(bodyX + 0.38f, -0.34f + breath, 0f, 0.32f, 0.7f, 0.28f, shellLight, 0.74f, glow)
+        drawPart(bodyX, -0.81f + breath, 0f, 0.54f, 0.28f, 0.3f, shell, 0.68f, glow)
+
+        val wave = if (direction.gesture == AvatarGesture.WAVE) sin(seconds * 8f) * 20f * strength else 0f
+        val explain = if (direction.gesture == AvatarGesture.EXPLAIN || direction.gesture == AvatarGesture.TALK)
+            sin(seconds * 3.6f) * 10f * strength else 0f
+        val leftAngle = when (direction.gesture) {
+            AvatarGesture.CELEBRATE -> 130f
+            AvatarGesture.COMFORT -> -42f
+            else -> -16f - explain
+        }
+        val rightAngle = when (direction.gesture) {
+            AvatarGesture.WAVE -> -128f + wave
+            AvatarGesture.POINT -> 76f
+            AvatarGesture.CELEBRATE -> -130f
+            AvatarGesture.COMFORT -> 42f
+            else -> 16f + explain
+        }
+        drawSystemArm(bodyX - 0.76f, -0.2f + breath, leftAngle, shell, mint, glow)
+        drawSystemArm(bodyX + 0.76f, -0.2f + breath, rightAngle, shellLight, sky, glow)
+
+        // Detached locomotion pods and an orbit of memory beads complete the asymmetric silhouette.
+        drawPart(bodyX - 0.28f, -1.34f + breath, 0f, 0.22f, 0.55f, 0.24f, shell, 0.7f, glow, -5f)
+        drawPart(bodyX + 0.31f, -1.31f + breath, 0f, 0.24f, 0.5f, 0.25f, shellLight, 0.7f, glow, 7f)
+        repeat(10) { index ->
+            val angle = index * PI.toFloat() * 2f / 10f + seconds * 0.18f
+            drawPart(bodyX + cos(angle) * 0.63f, -0.78f + sin(angle) * 0.12f,
+                sin(angle) * 0.28f, 0.035f, 0.035f, 0.035f,
+                if (index % 3 == 0) sky else mint, 0.85f, glow)
+        }
+    }
+
+    private fun drawSystemArm(
+        x: Float,
+        y: Float,
+        rotation: Float,
+        shell: FloatArray,
+        light: FloatArray,
+        glow: Float,
+    ) {
+        drawPart(x, y, 0f, 0.17f, 0.37f, 0.18f, shell, 0.72f, glow, rotation)
+        drawPart(x + sin(rotation / 58f) * 0.18f, y - 0.44f, 0f,
+            0.13f, 0.25f, 0.14f, shell, 0.72f, glow, rotation)
+        drawPart(x + sin(rotation / 58f) * 0.27f, y - 0.73f, 0f,
+            0.1f, 0.1f, 0.1f, light, 0.88f, glow)
     }
 
     private fun drawHair(

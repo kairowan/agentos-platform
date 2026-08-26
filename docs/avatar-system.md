@@ -4,6 +4,18 @@ AgentOS renders its system identity as a native procedural 3D character. The hom
 voice surface and character studio share one `AgentAvatar` profile and one OpenGL ES
 renderer; this is not a WebView, prerecorded video, or flat sticker.
 
+## Original visual identity
+
+The default `SYSTEM` family is the AgentOS Native Form. It is intentionally
+genderless and non-human: an asymmetric split-seed head shell surrounds a luminous
+optical expression membrane; a suspended energy core and three protective petals
+replace clothing and human anatomy; detached motion segments, an orbit of ten
+memory cells, and three crown nodes create its signature silhouette. The eyes and
+elastic light-mouth still support gaze, emotion, interruption, and TTS lip motion.
+
+Human, anime, fantasy, and semi-realistic families are optional user-created
+identities, never the product's default or brand anchor.
+
 ## Runtime
 
 - native `GLSurfaceView`/OpenGL ES 2.0 pipeline with depth testing and lit materials;

@@ -16,7 +16,8 @@ enum class AvatarOutfitColor(val label: String, val argb: Long) {
     MINT("薄荷", 0xFF36BFA0), BLUE("深蓝", 0xFF426DAE), AMBER("琥珀", 0xFFC68B32), VIOLET("紫罗兰", 0xFF7253A6), GRAPHITE("石墨", 0xFF33464E),
 }
 enum class AvatarStyleFamily(val label: String) {
-    SOFT("柔和潮玩"), ANIME("二次元"), CYBER("赛博未来"), FANTASY("幻想风格"), REALISTIC("半写实"),
+    SYSTEM("AgentOS 原生体"), SOFT("柔和潮玩"), ANIME("二次元"), CYBER("赛博未来"),
+    FANTASY("幻想风格"), REALISTIC("半写实"),
 }
 enum class AvatarMaterial(val label: String) { MATTE("哑光"), GLOSS("亮面"), METAL("金属"), HOLOGRAM("全息") }
 enum class AvatarOutfitStyle(val label: String) { MINIMAL("简约"), SUIT("礼服"), ARMOR("机甲"), ROBE("长袍"), STREET("街头") }
@@ -29,16 +30,16 @@ enum class AvatarExpression(val label: String) {
 data class AgentAvatar(
     val name: String = "小 A",
     val faceShape: AvatarFaceShape = AvatarFaceShape.OVAL,
-    val hairStyle: AvatarHairStyle = AvatarHairStyle.SHORT,
+    val hairStyle: AvatarHairStyle = AvatarHairStyle.BALD,
     val eyeStyle: AvatarEyeStyle = AvatarEyeStyle.BRIGHT,
     val skinTone: AvatarSkinTone = AvatarSkinTone.WARM,
     val hairColor: AvatarHairColor = AvatarHairColor.INK,
-    val outfitColor: AvatarOutfitColor = AvatarOutfitColor.MINT,
-    val styleFamily: AvatarStyleFamily = AvatarStyleFamily.SOFT,
-    val material: AvatarMaterial = AvatarMaterial.MATTE,
+    val outfitColor: AvatarOutfitColor = AvatarOutfitColor.GRAPHITE,
+    val styleFamily: AvatarStyleFamily = AvatarStyleFamily.SYSTEM,
+    val material: AvatarMaterial = AvatarMaterial.HOLOGRAM,
     val outfitStyle: AvatarOutfitStyle = AvatarOutfitStyle.MINIMAL,
     val accessory: AvatarAccessory = AvatarAccessory.NONE,
-    val styleDescription: String = "柔和、可信赖的系统智能体",
+    val styleDescription: String = "由浮游单元、记忆环与光学表情构成的 AgentOS 原生生命体",
     val faceWidth: Float = 0.5f,
     val eyeSize: Float = 0.55f,
     val eyeSpacing: Float = 0.5f,
@@ -113,16 +114,17 @@ class LocalAgentAvatarStore(context: Context) : AgentAvatarStore {
     override fun load() = AgentAvatar(
         name = prefs.getString("name", null) ?: "小 A",
         faceShape = enumValue("face", AvatarFaceShape.OVAL),
-        hairStyle = enumValue("hair", AvatarHairStyle.SHORT),
+        hairStyle = enumValue("hair", AvatarHairStyle.BALD),
         eyeStyle = enumValue("eyes", AvatarEyeStyle.BRIGHT),
         skinTone = enumValue("skin", AvatarSkinTone.WARM),
         hairColor = enumValue("hair_color", AvatarHairColor.INK),
-        outfitColor = enumValue("outfit", AvatarOutfitColor.MINT),
-        styleFamily = enumValue("style_family", AvatarStyleFamily.SOFT),
-        material = enumValue("material", AvatarMaterial.MATTE),
+        outfitColor = enumValue("outfit", AvatarOutfitColor.GRAPHITE),
+        styleFamily = enumValue("style_family", AvatarStyleFamily.SYSTEM),
+        material = enumValue("material", AvatarMaterial.HOLOGRAM),
         outfitStyle = enumValue("outfit_style", AvatarOutfitStyle.MINIMAL),
         accessory = enumValue("accessory", AvatarAccessory.NONE),
-        styleDescription = prefs.getString("style_description", null) ?: "柔和、可信赖的系统智能体",
+        styleDescription = prefs.getString("style_description", null)
+            ?: "由浮游单元、记忆环与光学表情构成的 AgentOS 原生生命体",
         faceWidth = prefs.getFloat("face_width", 0.5f),
         eyeSize = prefs.getFloat("eye_size", 0.55f),
         eyeSpacing = prefs.getFloat("eye_spacing", 0.5f),
