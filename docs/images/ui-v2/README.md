@@ -17,7 +17,9 @@ focused on one visible target while the full AOSP image is being built.
 
 ## Generation mode and prompt contract
 
-All images were generated with the built-in image generator in `ui-mockup` mode.
+All images were generated with the built-in image generator. New screens use
+`ui-mockup`; versioned updates that preserve an existing layout use
+`precise-object-edit`.
 The shared prompt requires a straight-on 9:20 Android screen, no hardware frame,
 native Material 3 components, background `#061014`, panels `#122026`/`#1A2D34`,
 trusted mint `#68F5CE`, information blue `#84AFFF`, confirmation amber `#FFC66D`,
@@ -41,7 +43,7 @@ Screen-specific prompts require:
 ## Update contract
 
 When any tracked UI source changes, update the affected mockup (or replace it with
-an emulator screenshot), review the four-screen set for consistency, then refresh
+an emulator screenshot), review the current five-screen set for consistency, then refresh
 `ui-preview.sha256`. `tests/check.sh` rejects a stale or corrupted visual baseline.
 
 Actual emulator/device screenshots should use the same filenames in a new versioned
