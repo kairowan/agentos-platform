@@ -31,6 +31,9 @@ grep -q 'Binder.getCallingUid' "${project_root}/services/AgentMediaService/src/c
 grep -q 'SurfaceView' "${project_root}/apps/AgentShell/src/com/agentos/shell/MediaWorkspace.kt"
 grep -q 'fun AgentHomeScreen' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentHome.kt"
 grep -q 'fun AgentBackdrop' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentDesign.kt"
+grep -q 'fun CharacterStudio' "${project_root}/apps/AgentShell/src/com/agentos/shell/CharacterStudio.kt"
+grep -q 'enum class AvatarExpression' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentAvatar.kt"
+grep -q 'class LocalAgentAvatarStore' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentAvatar.kt"
 grep -q 'object AppAdapterCatalog' "${project_root}/services/AgentCapabilityService/src/com/agentos/capability/service/AppBridgePolicy.kt"
 grep -q 'BIND_HOTWORD_DETECTION_SERVICE' "${project_root}/services/AgentVoiceService/AndroidManifest.xml"
 grep -q 'createAlwaysOnHotwordDetector' "${project_root}/services/AgentVoiceService/src/com/agentos/voice/AgentVoiceInteractionService.java"
@@ -57,7 +60,7 @@ grep -q 'class GeneratedUiParser' "${project_root}/apps/AgentShell/src/com/agent
 python3 -m json.tool "${project_root}/schemas/generated-ui.schema.json" >/dev/null
 bash -n "${project_root}/scripts/capture-hotword-diagnostics.sh"
 
-for preview in home-v2 app-bridge-v2 camera-v2 knowledge-v2; do
+for preview in home-v3 character-studio-v3 app-bridge-v2 camera-v2 knowledge-v2; do
   test -s "${project_root}/docs/images/ui-v2/${preview}.png"
 done
 

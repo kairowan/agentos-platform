@@ -29,13 +29,15 @@ These high-fidelity mockups are synchronized with the current Kotlin/Compose
 structure and design tokens. They are product-design references, not emulator or
 device screenshots. Runtime verification must still be performed on an AOSP build.
 
-| Agent home | App capability center |
+| Agent home | Character studio |
 | --- | --- |
-| ![AgentOS home screen](images/ui-v2/home-v2.png) | ![AgentOS app capability screen](images/ui-v2/app-bridge-v2.png) |
+| ![AgentOS home screen](images/ui-v2/home-v3.png) | ![AgentOS character studio](images/ui-v2/character-studio-v3.png) |
 
-| Native camera | Memory and knowledge graph |
+| App capability center | Native camera |
 | --- | --- |
-| ![AgentOS camera screen](images/ui-v2/camera-v2.png) | ![AgentOS knowledge graph screen](images/ui-v2/knowledge-v2.png) |
+| ![AgentOS app capability screen](images/ui-v2/app-bridge-v2.png) | ![AgentOS camera screen](images/ui-v2/camera-v2.png) |
+
+![AgentOS knowledge graph screen](images/ui-v2/knowledge-v2.png)
 
 The source prompts, update contract, and verification scope are recorded in
 [`images/ui-v2/README.md`](images/ui-v2/README.md).

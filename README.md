@@ -7,7 +7,7 @@ Buildable AgentOS product code for AOSP 17. The
 [`agentos`](https://github.com/kairowan/agentos) bootstrap checks this repository
 out at `vendor/agentos` inside the AOSP source tree.
 
-![AgentOS current voice-first UI](docs/images/ui-v2/home-v2.png)
+![AgentOS current voice-first UI with a customizable avatar](docs/images/ui-v2/home-v3.png)
 
 The image above is the current high-fidelity UI baseline. It mirrors the native
 Compose implementation but is not presented as an emulator screenshot. The full
@@ -57,6 +57,12 @@ apps, confirmation, notifications, and the full knowledge graph. The home screen
 keeps the command composer fixed above the keyboard, makes voice state the primary
 surface, and groups camera, gallery, installed apps, and memory as immediate actions.
 See [`docs/ui-system.md`](docs/ui-system.md).
+
+The voice surface now has a device-local virtual character instead of a fixed orb.
+Its expression follows listening, thinking, speaking, and attention state. A native
+Compose character studio provides names, face and eye shapes, hair, colors, continuous
+facial controls, expression previews, random presets, and local persistence. See
+[`docs/avatar-system.md`](docs/avatar-system.md).
 
 The same hotword can interrupt an active plan or spoken response. AgentShell keeps
 all local task history through Room/SQLite and renders every conversation plus an automatically
@@ -130,6 +136,7 @@ user-controlled Android setting.
 - [Capability Broker](docs/capability-broker.md)
 - [Model provider](docs/model-provider.md)
 - [Generated UI](docs/generated-ui.md)
+- [Virtual character and expressions](docs/avatar-system.md)
 - [Demo flow](docs/demo.md)
 - [Voice and message events](docs/voice-and-events.md)
 - [Conversation history and knowledge view](docs/history-and-knowledge.md)

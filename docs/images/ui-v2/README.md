@@ -1,4 +1,4 @@
-# AgentOS UI visual baseline v2
+# AgentOS UI visual baseline
 
 This directory contains generated high-fidelity product mockups aligned with the
 native Kotlin/Compose UI. They are not screenshots from an emulator or physical
@@ -7,7 +7,9 @@ focused on one visible target while the full AOSP image is being built.
 
 ## Screens
 
-- `home-v2.png`: voice-first home, quick capabilities, local planner, composer;
+- `home-v3.png`: current voice-first home with the customizable avatar;
+- `character-studio-v3.png`: avatar preview, expressions, and face controls;
+- `home-v2.png`: previous orb-based home retained as the v2 historical reference;
 - `app-bridge-v2.png`: installed-app capability providers and confirmation boundary;
 - `camera-v2.png`: native Camera2 photo/video surface and privacy indicators;
 - `knowledge-v2.png`: complete, editable, pan-and-zoom semantic knowledge graph.
@@ -23,7 +25,9 @@ off-white Chinese text, large touch targets, no WebView chrome, and no watermark
 Screen-specific prompts require:
 
 - Home: wake-word hero, camera/gallery/apps/memory actions, collapsed local model
-  connection, result card, and fixed natural-language composer.
+  connection, result card, fixed natural-language composer, and editable avatar.
+- Character Studio: device-local flat 2D avatar, expression previews, face/eye/hair
+  choices, continuous facial sliders, color controls, randomize, reset, and save.
 - App Bridge: provider/semantic tabs, app/package search, domain chips, provider
   capabilities, and explicit confirmation before opening or sensitive actions.
 - Camera: native Camera2 preview, tap-to-focus, zoom, photo/video selection,

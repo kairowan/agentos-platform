@@ -1,12 +1,10 @@
 package com.agentos.shell
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -45,6 +43,7 @@ internal fun AgentHomeScreen(
     onDeny: () -> Unit,
     onVoiceSettings: () -> Unit,
     onHistory: () -> Unit,
+    onAvatar: () -> Unit,
     onOpenMedia: (MediaWorkspaceMode) -> Unit,
     onOpenApps: () -> Unit,
     onNotificationAccess: () -> Unit,
@@ -56,7 +55,7 @@ internal fun AgentHomeScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item { HomeHeader(state.useRemoteModel) }
-            item { VoiceHero(state, onVoiceSettings) }
+            item { VoiceHero(state, onVoiceSettings, onAvatar) }
             item {
                 QuickActions(
                     onCamera = { onOpenMedia(MediaWorkspaceMode.CAMERA) },
@@ -97,19 +96,14 @@ private fun HomeHeader(remote: Boolean) {
 }
 
 @Composable
-private fun VoiceHero(state: AgentUiState, onSettings: () -> Unit) {
+private fun VoiceHero(state: AgentUiState, onSettings: () -> Unit, onAvatar: () -> Unit) {
     AgentPanel(Modifier.fillMaxWidth(), accent = if (state.isWorking) AgentBlue else AgentMint) {
         Row(Modifier.fillMaxWidth().padding(20.dp), Arrangement.spacedBy(18.dp), Alignment.CenterVertically) {
-            Box(
-                Modifier.size(72.dp).background(
-                    if (state.isWorking) AgentBlue.copy(alpha = 0.2f) else AgentMint.copy(alpha = 0.16f),
-                    CircleShape,
-                ),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (state.isWorking) CircularProgressIndicator(Modifier.size(36.dp), strokeWidth = 3.dp)
-                else Text("A", color = AgentMint, style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold)
+            Box(Modifier.size(92.dp).clickable(onClick = onAvatar)) {
+                AgentAvatarView(state.avatar, state.avatarExpression(), Modifier.fillMaxSize())
+                if (state.isWorking) CircularProgressIndicator(
+                    Modifier.size(32.dp).align(Alignment.Center), strokeWidth = 3.dp, color = AgentBlue,
+                )
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 AgentPill(if (state.isWorking) "正在思考" else "随时可唤醒")
@@ -118,7 +112,10 @@ private fun VoiceHero(state: AgentUiState, onSettings: () -> Unit) {
                 Text(state.voiceStatus, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text("设置", color = AgentBlue, modifier = Modifier.clickable(onClick = onSettings).padding(8.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                Text("角色", color = AgentMint, modifier = Modifier.clickable(onClick = onAvatar).padding(8.dp))
+                Text("设置", color = AgentBlue, modifier = Modifier.clickable(onClick = onSettings).padding(8.dp))
+            }
         }
     }
 }

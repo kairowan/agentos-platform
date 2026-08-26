@@ -68,9 +68,9 @@ class MainActivity : ComponentActivity() {
                 val appState by appViewModel.state.collectAsStateWithLifecycle()
                 LaunchedEffect(state.voiceReply) {
                     state.voiceReply?.let {
-                        (voiceOutput ?: VoiceOutputController(applicationContext, ::rearmHotword)
+                        viewModel.markVoiceOutputStarted()
+                        (voiceOutput ?: VoiceOutputController(applicationContext, ::finishVoiceOutput)
                             .also { voiceOutput = it }).speak(it)
-                        viewModel.consumeVoiceReply()
                     }
                 }
                 if (mediaState.mode != MediaWorkspaceMode.CLOSED) {
@@ -129,6 +129,9 @@ class MainActivity : ComponentActivity() {
                         startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS))
                     },
                     onToggleHistory = viewModel::toggleHistory,
+                    onOpenAvatarStudio = viewModel::openAvatarStudio,
+                    onCloseAvatarStudio = viewModel::closeAvatarStudio,
+                    onSaveAvatar = viewModel::saveAvatar,
                     onClearHistory = viewModel::clearHistory,
                     onRenameKnowledgeEntity = viewModel::renameKnowledgeEntity,
                     onMoveKnowledgeEntity = viewModel::moveKnowledgeEntity,
@@ -188,6 +191,7 @@ class MainActivity : ComponentActivity() {
         val command = raw.trim().replace("。", "").replace("！", "")
         return when (command) {
             "打开应用能力", "打开应用中心", "应用中心", "应用能力" -> true.also { appViewModel.open() }
+            "创建角色", "编辑角色", "打开角色工作室", "捏人" -> true.also { viewModel.openAvatarStudio() }
             "读取当前页面", "分析当前页面" -> true.also { appViewModel.open(); appViewModel.refreshSemantics() }
             else -> false
         }
@@ -199,6 +203,11 @@ class MainActivity : ComponentActivity() {
                 ComponentName(VOICE_PACKAGE, VOICE_REARM_RECEIVER),
             ),
         )
+    }
+
+    private fun finishVoiceOutput() {
+        viewModel.finishVoiceOutput()
+        rearmHotword()
     }
 
     override fun onDestroy() {
@@ -228,6 +237,9 @@ internal fun AgentShellContent(
     onDeny: () -> Unit,
     onVoiceSettings: () -> Unit,
     onToggleHistory: () -> Unit,
+    onOpenAvatarStudio: () -> Unit,
+    onCloseAvatarStudio: () -> Unit,
+    onSaveAvatar: (AgentAvatar) -> Unit,
     onClearHistory: () -> Unit,
     onRenameKnowledgeEntity: (String, String, String) -> Unit,
     onMoveKnowledgeEntity: (String, Float, Float) -> Unit,
@@ -237,7 +249,9 @@ internal fun AgentShellContent(
     onOpenApps: () -> Unit,
     onNotificationAccess: () -> Unit,
 ) {
-    if (state.showHistory) {
+    if (state.showAvatarStudio) {
+        CharacterStudio(state.avatar, onCloseAvatarStudio, onSaveAvatar)
+    } else if (state.showHistory) {
         KnowledgeScreen(state, onToggleHistory, onClearHistory,
             onRenameKnowledgeEntity, onMoveKnowledgeEntity,
             onEditKnowledgeRelation, onRemoveKnowledgeRelation)
@@ -245,7 +259,7 @@ internal fun AgentShellContent(
         state, onPromptChanged, onSubmit, onSuggestion, onToggleModelSettings,
         onRemoteModelEnabled, onModelEndpointChanged, onModelNameChanged,
         onModelApiKeyChanged, onApprove, onDeny, onVoiceSettings, onToggleHistory,
-        onOpenMedia, onOpenApps, onNotificationAccess,
+        onOpenAvatarStudio, onOpenMedia, onOpenApps, onNotificationAccess,
     )
 }
 

@@ -31,10 +31,13 @@ data class AgentUiState(
     val modelApiKey: String = "",
     val voiceStatus: String = "等待“Hey AgentOS”唤醒",
     val voiceReply: String? = null,
+    val isSpeaking: Boolean = false,
     val notifications: List<AgentNotificationEvent> = emptyList(),
     val history: List<ConversationEntry> = emptyList(),
     val knowledgeGraph: KnowledgeGraph = KnowledgeGraph(),
     val showHistory: Boolean = false,
+    val avatar: AgentAvatar = AgentAvatar(),
+    val showAvatarStudio: Boolean = false,
 ) {
     override fun toString(): String =
         "AgentUiState(promptLength=${prompt.length}, screen=${screen.title}, " +
@@ -44,6 +47,7 @@ data class AgentUiState(
 class AgentShellViewModel internal constructor(
     private val gateway: CapabilityGateway,
     private val historyStore: ConversationHistory = EmptyConversationHistory,
+    private val avatarStore: AgentAvatarStore = EmptyAgentAvatarStore,
 ) : ViewModel() {
     private val runtime = AgentRuntime(gateway)
     private val mutableUiState = MutableStateFlow(AgentUiState())
@@ -52,6 +56,7 @@ class AgentShellViewModel internal constructor(
     private val historyMutex = Mutex()
 
     init {
+        mutableUiState.update { it.copy(avatar = avatarStore.load()) }
         viewModelScope.launch {
             val (history, graph) = withContext(Dispatchers.IO) {
                 historyMutex.withLock { historyStore.load() to historyStore.loadGraph() }
@@ -77,6 +82,20 @@ class AgentShellViewModel internal constructor(
 
     fun toggleHistory() {
         mutableUiState.update { it.copy(showHistory = !it.showHistory) }
+    }
+
+    fun openAvatarStudio() {
+        mutableUiState.update { it.copy(showAvatarStudio = true) }
+    }
+
+    fun closeAvatarStudio() {
+        mutableUiState.update { it.copy(showAvatarStudio = false) }
+    }
+
+    fun saveAvatar(avatar: AgentAvatar) {
+        val value = avatar.normalized()
+        avatarStore.save(value)
+        mutableUiState.update { it.copy(avatar = value, showAvatarStudio = false) }
     }
 
     fun clearHistory() {
@@ -140,15 +159,20 @@ class AgentShellViewModel internal constructor(
         submit(prompt, fromVoice = true)
     }
 
-    fun consumeVoiceReply() {
-        mutableUiState.update { it.copy(voiceReply = null) }
+    fun markVoiceOutputStarted() {
+        mutableUiState.update { it.copy(voiceReply = null, isSpeaking = true) }
+    }
+
+    fun finishVoiceOutput() {
+        mutableUiState.update { it.copy(isSpeaking = false) }
     }
 
     fun interruptVoiceTurn() {
         activeTurn?.cancel()
         activeTurn = null
         mutableUiState.update {
-            it.copy(isWorking = false, voiceReply = null, voiceStatus = "已打断，正在聆听新指令")
+            it.copy(isWorking = false, voiceReply = null, isSpeaking = false,
+                voiceStatus = "已打断，正在聆听新指令")
         }
     }
 
@@ -260,6 +284,7 @@ class AgentShellViewModel internal constructor(
                 return AgentShellViewModel(
                     AgentCapabilityClient(context),
                     LocalConversationHistory(context),
+                    LocalAgentAvatarStore(context),
                 ) as T
             }
         }
