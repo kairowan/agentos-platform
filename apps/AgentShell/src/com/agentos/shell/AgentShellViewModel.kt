@@ -38,6 +38,9 @@ data class AgentUiState(
     val showHistory: Boolean = false,
     val avatar: AgentAvatar = AgentAvatar(),
     val showAvatarStudio: Boolean = false,
+    val generatedAvatarDraft: AgentAvatar? = null,
+    val avatarStyleWorking: Boolean = false,
+    val avatarStyleError: String? = null,
 ) {
     override fun toString(): String =
         "AgentUiState(promptLength=${prompt.length}, screen=${screen.title}, " +
@@ -85,17 +88,57 @@ class AgentShellViewModel internal constructor(
     }
 
     fun openAvatarStudio() {
-        mutableUiState.update { it.copy(showAvatarStudio = true) }
+        mutableUiState.update {
+            it.copy(showAvatarStudio = true, generatedAvatarDraft = null, avatarStyleError = null)
+        }
     }
 
     fun closeAvatarStudio() {
-        mutableUiState.update { it.copy(showAvatarStudio = false) }
+        mutableUiState.update {
+            it.copy(showAvatarStudio = false, generatedAvatarDraft = null,
+                avatarStyleWorking = false, avatarStyleError = null)
+        }
     }
 
     fun saveAvatar(avatar: AgentAvatar) {
         val value = avatar.normalized()
         avatarStore.save(value)
-        mutableUiState.update { it.copy(avatar = value, showAvatarStudio = false) }
+        mutableUiState.update {
+            it.copy(avatar = value, showAvatarStudio = false, generatedAvatarDraft = null,
+                avatarStyleWorking = false, avatarStyleError = null)
+        }
+    }
+
+    fun generateAvatarStyle(prompt: String, current: AgentAvatar) {
+        if (prompt.isBlank() || prompt.length > 1_000) {
+            mutableUiState.update { it.copy(avatarStyleError = "请输入 1–1000 字的角色风格描述") }
+            return
+        }
+        val config = try {
+            currentModelConfig()
+        } catch (_: IllegalArgumentException) {
+            null
+        }
+        if (config == null) {
+            mutableUiState.update { it.copy(avatarStyleError = "请先在主页配置并启用大模型") }
+            return
+        }
+        viewModelScope.launch {
+            mutableUiState.update { it.copy(avatarStyleWorking = true, avatarStyleError = null) }
+            try {
+                val generated = AvatarStyleGenerator(config).generate(prompt, current)
+                mutableUiState.update {
+                    it.copy(generatedAvatarDraft = generated, avatarStyleWorking = false)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                mutableUiState.update {
+                    it.copy(avatarStyleWorking = false,
+                        avatarStyleError = "模型返回的角色配置无效或网络不可用")
+                }
+            }
+        }
     }
 
     fun clearHistory() {

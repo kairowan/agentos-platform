@@ -1,6 +1,5 @@
 package com.agentos.shell
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,43 +18,45 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun CharacterStudio(
     avatar: AgentAvatar,
+    generatedAvatar: AgentAvatar?,
+    styleWorking: Boolean,
+    styleError: String?,
     onBack: () -> Unit,
     onSave: (AgentAvatar) -> Unit,
+    onGenerateStyle: (String, AgentAvatar) -> Unit,
 ) {
     var draft by remember(avatar) { mutableStateOf(avatar) }
     var expression by remember { mutableStateOf(AvatarExpression.HAPPY) }
+    var stylePrompt by remember { mutableStateOf("") }
+    LaunchedEffect(generatedAvatar) { generatedAvatar?.let { draft = it } }
     AgentBackdrop {
         LazyColumn(
             Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 18.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 12.dp, bottom = 36.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            item { AgentTopBar("角色工作室", "捏出属于你的系统智能体", onBack, "保存") { onSave(draft) } }
+            item { AgentTopBar("3D 角色工作室", "旋转、缩放并塑造系统智能体", onBack, "保存") { onSave(draft) } }
             item {
                 AgentPanel(Modifier.fillMaxWidth(), AgentMint) {
                     Column(
@@ -64,15 +65,42 @@ internal fun CharacterStudio(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         AgentAvatarView(draft, expression, Modifier.size(230.dp))
+                        Text("拖动旋转 · 双指缩放", color = AgentMint,
+                            style = MaterialTheme.typography.labelSmall)
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                             Column {
                                 Text(draft.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                Text("表情会跟随聆听、思考和说话状态", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                Text(draft.styleDescription, color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodySmall)
                             }
                             AgentPill(expression.label)
                         }
                     }
+                }
+            }
+            item {
+                EditorSection("让大模型设计整个风格") {
+                    OutlinedTextField(
+                        value = stylePrompt,
+                        onValueChange = { stylePrompt = it.take(1_000) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("例如：赛博仙侠风，银发、全息面罩、轻型机甲") },
+                        minLines = 2,
+                        maxLines = 4,
+                        enabled = !styleWorking,
+                    )
+                    styleError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    Button(
+                        onClick = { onGenerateStyle(stylePrompt, draft) },
+                        enabled = stylePrompt.isNotBlank() && !styleWorking,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        if (styleWorking) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                        else Text("生成 3D 风格")
+                    }
+                    Text("模型只生成经过 Schema 校验的参数，不执行代码或下载未知资产。",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall)
                 }
             }
             item {
@@ -112,6 +140,22 @@ internal fun CharacterStudio(
                 }
             }
             item {
+                EditorSection("3D 风格与材质") {
+                    Text("整体风格", style = MaterialTheme.typography.labelLarge)
+                    ChoiceRow(AvatarStyleFamily.entries, draft.styleFamily, { it.label }) { draft = draft.copy(styleFamily = it) }
+                    Text("材质", style = MaterialTheme.typography.labelLarge)
+                    ChoiceRow(AvatarMaterial.entries, draft.material, { it.label }) { draft = draft.copy(material = it) }
+                    Text("服装结构", style = MaterialTheme.typography.labelLarge)
+                    ChoiceRow(AvatarOutfitStyle.entries, draft.outfitStyle, { it.label }) { draft = draft.copy(outfitStyle = it) }
+                    Text("配件", style = MaterialTheme.typography.labelLarge)
+                    ChoiceRow(AvatarAccessory.entries, draft.accessory, { it.label }) { draft = draft.copy(accessory = it) }
+                    ShapeSlider("头部比例", draft.headScale) { draft = draft.copy(headScale = it) }
+                    ShapeSlider("身高比例", draft.bodyHeight) { draft = draft.copy(bodyHeight = it) }
+                    ShapeSlider("肩部宽度", draft.shoulderWidth) { draft = draft.copy(shoulderWidth = it) }
+                    ShapeSlider("发光强度", draft.glow) { draft = draft.copy(glow = it) }
+                }
+            }
+            item {
                 EditorSection("发型与配色") {
                     Text("发型", style = MaterialTheme.typography.labelLarge)
                     ChoiceRow(AvatarHairStyle.entries, draft.hairStyle, { it.label }) { draft = draft.copy(hairStyle = it) }
@@ -133,7 +177,7 @@ internal fun CharacterStudio(
                 AgentPanel(Modifier.fillMaxWidth(), AgentBlue) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("本地角色", fontWeight = FontWeight.Bold)
-                        Text("外观参数只保存在设备内。未来接入照片建模或云端生成时，必须单独取得授权。",
+                        Text("角色参数只保存在设备内。启用远程模型时，仅发送你的风格描述和当前参数，不发送照片。",
                             color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         Button(onClick = { onSave(draft) }, modifier = Modifier.fillMaxWidth()) { Text("保存并使用") }
                     }
@@ -200,110 +244,5 @@ private fun ShapeSlider(label: String, value: Float, onValueChange: (Float) -> U
             Text("${(value * 100).toInt()}%", color = AgentMint, style = MaterialTheme.typography.bodySmall)
         }
         Slider(value = value, onValueChange = onValueChange)
-    }
-}
-
-@Composable
-internal fun AgentAvatarView(
-    avatar: AgentAvatar,
-    expression: AvatarExpression,
-    modifier: Modifier = Modifier,
-) {
-    val skin = Color(avatar.skinTone.argb)
-    val hair = Color(avatar.hairColor.argb)
-    val outfit = Color(avatar.outfitColor.argb)
-    val ink = Color(0xFF18262A)
-    Canvas(
-        modifier.background(Color(0xFF0B1A1F), RoundedCornerShape(28.dp))
-            .border(1.dp, AgentMint.copy(alpha = 0.28f), RoundedCornerShape(28.dp))
-            .semantics { contentDescription = "${avatar.name}，${expression.label}表情" },
-    ) {
-        val cx = size.width / 2f
-        val unit = size.minDimension
-        val faceW = unit * (0.47f + avatar.faceWidth * 0.09f)
-        val faceH = when (avatar.faceShape) {
-            AvatarFaceShape.ROUND -> faceW
-            AvatarFaceShape.OVAL -> faceW * 1.14f
-            AvatarFaceShape.HEART -> faceW * 1.08f
-            AvatarFaceShape.SQUARE -> faceW * 1.02f
-        }
-        val faceTop = unit * 0.18f
-        val faceLeft = cx - faceW / 2f
-        val hairPad = unit * 0.045f
-
-        drawOval(outfit, Offset(cx - unit * 0.36f, unit * 0.70f), Size(unit * 0.72f, unit * 0.42f))
-        drawRoundRect(skin, Offset(cx - unit * 0.075f, unit * 0.60f), Size(unit * 0.15f, unit * 0.20f),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(unit * 0.04f))
-        if (avatar.hairStyle == AvatarHairStyle.PONYTAIL) {
-            drawCircle(hair, unit * 0.13f, Offset(cx + faceW * 0.54f, faceTop + faceH * 0.42f))
-        }
-        if (avatar.hairStyle == AvatarHairStyle.BOB || avatar.hairStyle == AvatarHairStyle.WAVY) {
-            drawOval(hair, Offset(faceLeft - hairPad, faceTop - hairPad), Size(faceW + hairPad * 2f, faceH + hairPad * 1.8f))
-        }
-        val corner = if (avatar.faceShape == AvatarFaceShape.SQUARE) unit * 0.08f else faceW / 2f
-        drawRoundRect(skin, Offset(faceLeft, faceTop), Size(faceW, faceH),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(corner))
-        drawCircle(skin, unit * 0.045f, Offset(faceLeft, faceTop + faceH * 0.5f))
-        drawCircle(skin, unit * 0.045f, Offset(faceLeft + faceW, faceTop + faceH * 0.5f))
-
-        if (avatar.hairStyle != AvatarHairStyle.BALD) {
-            val hairHeight = when (avatar.hairStyle) {
-                AvatarHairStyle.BUZZ -> faceH * 0.22f
-                AvatarHairStyle.SHORT -> faceH * 0.30f
-                else -> faceH * 0.36f
-            }
-            drawArc(hair, 180f, 180f, true, Offset(faceLeft, faceTop - hairPad), Size(faceW, hairHeight * 2f))
-            if (avatar.hairStyle == AvatarHairStyle.WAVY) {
-                repeat(5) { index ->
-                    drawCircle(hair, unit * 0.045f, Offset(faceLeft + faceW * (0.15f + index * 0.17f), faceTop + hairHeight * 0.52f))
-                }
-            }
-        }
-
-        val eyeY = faceTop + faceH * 0.48f
-        val eyeGap = faceW * (0.16f + avatar.eyeSpacing * 0.055f)
-        val eyeRadius = unit * (0.018f + avatar.eyeSize * 0.018f)
-        val leftEye = Offset(cx - eyeGap, eyeY)
-        val rightEye = Offset(cx + eyeGap, eyeY)
-        val stroke = unit * 0.014f
-
-        if (expression == AvatarExpression.HAPPY || expression == AvatarExpression.SLEEPY) {
-            drawArc(ink, 190f, 160f, false, leftEye - Offset(eyeRadius, eyeRadius), Size(eyeRadius * 2f, eyeRadius * 1.4f),
-                style = Stroke(stroke, cap = StrokeCap.Round))
-            drawArc(ink, 190f, 160f, false, rightEye - Offset(eyeRadius, eyeRadius), Size(eyeRadius * 2f, eyeRadius * 1.4f),
-                style = Stroke(stroke, cap = StrokeCap.Round))
-        } else {
-            val scaleY = if (avatar.eyeStyle == AvatarEyeStyle.CALM || avatar.eyeStyle == AvatarEyeStyle.SHARP) 0.55f else 1f
-            drawOval(ink, Offset(leftEye.x - eyeRadius, leftEye.y - eyeRadius * scaleY), Size(eyeRadius * 2f, eyeRadius * 2f * scaleY))
-            drawOval(ink, Offset(rightEye.x - eyeRadius, rightEye.y - eyeRadius * scaleY), Size(eyeRadius * 2f, eyeRadius * 2f * scaleY))
-            if (avatar.eyeStyle == AvatarEyeStyle.BRIGHT || expression == AvatarExpression.SURPRISED) {
-                drawCircle(Color.White, eyeRadius * 0.34f, leftEye - Offset(eyeRadius * 0.25f, eyeRadius * 0.25f))
-                drawCircle(Color.White, eyeRadius * 0.34f, rightEye - Offset(eyeRadius * 0.25f, eyeRadius * 0.25f))
-            }
-        }
-
-        val browY = eyeY - eyeRadius * 2.1f
-        val browTilt = if (expression == AvatarExpression.CONCERNED) eyeRadius else if (expression == AvatarExpression.THINKING) -eyeRadius else 0f
-        drawLine(ink, Offset(leftEye.x - eyeRadius, browY + browTilt), Offset(leftEye.x + eyeRadius, browY - browTilt), stroke, StrokeCap.Round)
-        drawLine(ink, Offset(rightEye.x - eyeRadius, browY - browTilt), Offset(rightEye.x + eyeRadius, browY + browTilt), stroke, StrokeCap.Round)
-
-        val mouthY = faceTop + faceH * 0.73f
-        val mouthW = faceW * (0.16f + avatar.mouthWidth * 0.12f)
-        when (expression) {
-            AvatarExpression.HAPPY, AvatarExpression.LISTENING -> drawArc(ink, 0f, 180f, false,
-                Offset(cx - mouthW / 2f, mouthY - mouthW * 0.2f), Size(mouthW, mouthW * 0.55f),
-                style = Stroke(stroke, cap = StrokeCap.Round))
-            AvatarExpression.SPEAKING, AvatarExpression.SURPRISED -> drawOval(ink,
-                Offset(cx - mouthW * 0.28f, mouthY - mouthW * 0.18f), Size(mouthW * 0.56f, mouthW * 0.58f),
-                style = Stroke(stroke))
-            AvatarExpression.CONCERNED -> drawArc(ink, 180f, 180f, false,
-                Offset(cx - mouthW / 2f, mouthY), Size(mouthW, mouthW * 0.45f),
-                style = Stroke(stroke, cap = StrokeCap.Round))
-            AvatarExpression.THINKING -> drawLine(ink, Offset(cx - mouthW / 2f, mouthY), Offset(cx + mouthW / 2f, mouthY - stroke), stroke, StrokeCap.Round)
-            AvatarExpression.SLEEPY -> drawLine(ink, Offset(cx - mouthW / 3f, mouthY), Offset(cx + mouthW / 3f, mouthY), stroke, StrokeCap.Round)
-            AvatarExpression.NEUTRAL -> drawArc(ink, 12f, 156f, false,
-                Offset(cx - mouthW / 2f, mouthY), Size(mouthW, mouthW * 0.25f),
-                style = Stroke(stroke, cap = StrokeCap.Round))
-        }
     }
 }

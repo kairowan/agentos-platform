@@ -25,13 +25,13 @@ or execute privileged actions during composition.
 
 ## Current visual baseline
 
-These high-fidelity mockups are synchronized with the current Kotlin/Compose
+These high-fidelity mockups are synchronized with the current Kotlin/Compose and OpenGL ES
 structure and design tokens. They are product-design references, not emulator or
 device screenshots. Runtime verification must still be performed on an AOSP build.
 
 | Agent home | Character studio |
 | --- | --- |
-| ![AgentOS home screen](images/ui-v2/home-v3.png) | ![AgentOS character studio](images/ui-v2/character-studio-v3.png) |
+| ![AgentOS home screen](images/ui-v2/home-v4.png) | ![AgentOS 3D character studio](images/ui-v2/character-studio-v4.png) |
 
 | App capability center | Native camera |
 | --- | --- |

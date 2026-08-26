@@ -34,6 +34,8 @@ grep -q 'fun AgentBackdrop' "${project_root}/apps/AgentShell/src/com/agentos/she
 grep -q 'fun CharacterStudio' "${project_root}/apps/AgentShell/src/com/agentos/shell/CharacterStudio.kt"
 grep -q 'enum class AvatarExpression' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentAvatar.kt"
 grep -q 'class LocalAgentAvatarStore' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentAvatar.kt"
+grep -q 'class AvatarRenderer' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentAvatar3DView.kt"
+grep -q 'class AvatarStyleParser' "${project_root}/apps/AgentShell/src/com/agentos/shell/AvatarStyleGenerator.kt"
 grep -q 'object AppAdapterCatalog' "${project_root}/services/AgentCapabilityService/src/com/agentos/capability/service/AppBridgePolicy.kt"
 grep -q 'BIND_HOTWORD_DETECTION_SERVICE' "${project_root}/services/AgentVoiceService/AndroidManifest.xml"
 grep -q 'createAlwaysOnHotwordDetector' "${project_root}/services/AgentVoiceService/src/com/agentos/voice/AgentVoiceInteractionService.java"
@@ -58,9 +60,10 @@ grep -q 'com.agentos.capability domain=agent_capability_service' "${project_root
 grep -q 'class OpenAiCompatiblePlanner' "${project_root}/apps/AgentShell/src/com/agentos/shell/OpenAiCompatiblePlanner.kt"
 grep -q 'class GeneratedUiParser' "${project_root}/apps/AgentShell/src/com/agentos/shell/GeneratedUiParser.kt"
 python3 -m json.tool "${project_root}/schemas/generated-ui.schema.json" >/dev/null
+python3 -m json.tool "${project_root}/schemas/avatar-style.schema.json" >/dev/null
 bash -n "${project_root}/scripts/capture-hotword-diagnostics.sh"
 
-for preview in home-v3 character-studio-v3 app-bridge-v2 camera-v2 knowledge-v2; do
+for preview in home-v4 character-studio-v4 app-bridge-v2 camera-v2 knowledge-v2; do
   test -s "${project_root}/docs/images/ui-v2/${preview}.png"
 done
 

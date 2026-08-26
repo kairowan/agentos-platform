@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentos.dev/schemas/avatar-style.schema.json",
+  "title": "AgentOS Procedural 3D Avatar Style",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version", "styleDescription", "styleFamily", "material", "outfitStyle", "accessory",
+    "faceShape", "hairStyle", "eyeStyle", "skinTone", "hairColor", "outfitColor",
+    "faceWidth", "eyeSize", "eyeSpacing", "mouthWidth", "headScale", "bodyHeight",
+    "shoulderWidth", "glow"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "styleDescription": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "styleFamily": { "enum": ["SOFT", "ANIME", "CYBER", "FANTASY", "REALISTIC"] },
+    "material": { "enum": ["MATTE", "GLOSS", "METAL", "HOLOGRAM"] },
+    "outfitStyle": { "enum": ["MINIMAL", "SUIT", "ARMOR", "ROBE", "STREET"] },
+    "accessory": { "enum": ["NONE", "VISOR", "HEADSET", "HALO", "HORNS"] },
+    "faceShape": { "enum": ["ROUND", "OVAL", "HEART", "SQUARE"] },
+    "hairStyle": { "enum": ["SHORT", "WAVY", "BOB", "PONYTAIL", "BUZZ", "BALD"] },
+    "eyeStyle": { "enum": ["ROUND", "CALM", "BRIGHT", "SHARP"] },
+    "skinTone": { "enum": ["LIGHT", "WARM", "TAN", "DEEP"] },
+    "hairColor": { "enum": ["INK", "BROWN", "COPPER", "SILVER", "MINT"] },
+    "outfitColor": { "enum": ["MINT", "BLUE", "AMBER", "VIOLET", "GRAPHITE"] },
+    "faceWidth": { "$ref": "#/$defs/unit" },
+    "eyeSize": { "$ref": "#/$defs/unit" },
+    "eyeSpacing": { "$ref": "#/$defs/unit" },
+    "mouthWidth": { "$ref": "#/$defs/unit" },
+    "headScale": { "$ref": "#/$defs/unit" },
+    "bodyHeight": { "$ref": "#/$defs/unit" },
+    "shoulderWidth": { "$ref": "#/$defs/unit" },
+    "glow": { "$ref": "#/$defs/unit" }
+  },
+  "$defs": {
+    "unit": { "type": "number", "minimum": 0, "maximum": 1 }
+  }
+}

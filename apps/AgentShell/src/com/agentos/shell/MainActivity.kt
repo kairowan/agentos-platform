@@ -132,6 +132,7 @@ class MainActivity : ComponentActivity() {
                     onOpenAvatarStudio = viewModel::openAvatarStudio,
                     onCloseAvatarStudio = viewModel::closeAvatarStudio,
                     onSaveAvatar = viewModel::saveAvatar,
+                    onGenerateAvatarStyle = viewModel::generateAvatarStyle,
                     onClearHistory = viewModel::clearHistory,
                     onRenameKnowledgeEntity = viewModel::renameKnowledgeEntity,
                     onMoveKnowledgeEntity = viewModel::moveKnowledgeEntity,
@@ -240,6 +241,7 @@ internal fun AgentShellContent(
     onOpenAvatarStudio: () -> Unit,
     onCloseAvatarStudio: () -> Unit,
     onSaveAvatar: (AgentAvatar) -> Unit,
+    onGenerateAvatarStyle: (String, AgentAvatar) -> Unit,
     onClearHistory: () -> Unit,
     onRenameKnowledgeEntity: (String, String, String) -> Unit,
     onMoveKnowledgeEntity: (String, Float, Float) -> Unit,
@@ -250,7 +252,15 @@ internal fun AgentShellContent(
     onNotificationAccess: () -> Unit,
 ) {
     if (state.showAvatarStudio) {
-        CharacterStudio(state.avatar, onCloseAvatarStudio, onSaveAvatar)
+        CharacterStudio(
+            avatar = state.avatar,
+            generatedAvatar = state.generatedAvatarDraft,
+            styleWorking = state.avatarStyleWorking,
+            styleError = state.avatarStyleError,
+            onBack = onCloseAvatarStudio,
+            onSave = onSaveAvatar,
+            onGenerateStyle = onGenerateAvatarStyle,
+        )
     } else if (state.showHistory) {
         KnowledgeScreen(state, onToggleHistory, onClearHistory,
             onRenameKnowledgeEntity, onMoveKnowledgeEntity,

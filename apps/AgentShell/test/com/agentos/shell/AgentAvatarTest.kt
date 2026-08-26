@@ -8,7 +8,8 @@ import org.junit.Test
 class AgentAvatarTest {
     @Test
     fun normalizesPersistedAndUserControlledValues() {
-        val avatar = AgentAvatar(name = "   ", faceWidth = -1f, eyeSize = 2f, eyeSpacing = -3f, mouthWidth = 4f)
+        val avatar = AgentAvatar(name = "   ", styleDescription = " ", faceWidth = -1f,
+            eyeSize = 2f, eyeSpacing = -3f, mouthWidth = 4f, headScale = 2f, glow = -1f)
             .normalized()
 
         assertEquals("小 A", avatar.name)
@@ -16,6 +17,9 @@ class AgentAvatarTest {
         assertEquals(1f, avatar.eyeSize)
         assertEquals(0f, avatar.eyeSpacing)
         assertEquals(1f, avatar.mouthWidth)
+        assertEquals("自定义 3D 角色", avatar.styleDescription)
+        assertEquals(1f, avatar.headScale)
+        assertEquals(0f, avatar.glow)
     }
 
     @Test
@@ -26,6 +30,10 @@ class AgentAvatarTest {
         assertTrue(avatar.eyeSize in 0f..1f)
         assertTrue(avatar.eyeSpacing in 0f..1f)
         assertTrue(avatar.mouthWidth in 0f..1f)
+        assertTrue(avatar.headScale in 0f..1f)
+        assertTrue(avatar.bodyHeight in 0f..1f)
+        assertTrue(avatar.shoulderWidth in 0f..1f)
+        assertTrue(avatar.glow in 0f..1f)
     }
 
     @Test
