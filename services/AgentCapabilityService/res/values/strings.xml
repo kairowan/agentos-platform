@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_bridge_accessibility_description">允许 AgentOS 在你要求时读取当前应用页面的可访问语义，并执行经过策略检查的点击、滚动或输入。</string>
+</resources>

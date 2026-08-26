@@ -41,6 +41,13 @@ front/back preview, zoom, JPEG photos, H.264/AAC video, pauseable M4A recording,
 live amplitude, and a unified MediaStore gallery. See
 [`docs/media-runtime.md`](docs/media-runtime.md) for hardware-dependent limits.
 
+Installed Android applications can now act as compatibility-layer capability
+providers through `AgentAppBridgeService`. The bridge discovers launchable apps
+without requesting visibility of every installed package, requires a one-time
+confirmation before launching, and can expose a bounded accessibility-semantic
+snapshot instead of private app files or credentials. See
+[`docs/app-bridge.md`](docs/app-bridge.md).
+
 The same hotword can interrupt an active plan or spoken response. AgentShell keeps
 all local task history through Room/SQLite and renders every conversation plus an automatically
 extracted semantic graph of people, relationships, preferences, projects, places,

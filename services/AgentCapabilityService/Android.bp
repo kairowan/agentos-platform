@@ -3,6 +3,7 @@ android_app {
     package_name: "com.agentos.capability",
     srcs: ["src/**/*.kt"],
     manifest: "AndroidManifest.xml",
+    resource_dirs: ["res"],
     static_libs: [
         "AgentCapabilityApi",
         "AgentCapabilityCore",

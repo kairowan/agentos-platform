@@ -9,6 +9,10 @@ adb install -r AgentShell-debug.apk
 adb shell cmd package set-home-activity com.agentos.shell/.MainActivity
 ```
 
+To test installed-app semantic snapshots, open Android Accessibility settings from
+the **应用能力桥** card and explicitly enable **AgentOS 应用语义桥**. It is not
+enabled automatically by the build or demo workflow.
+
 ## Offline path
 
 1. Choose **查看设备状态** and verify the typed facts returned by the Broker.

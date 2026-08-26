@@ -63,12 +63,16 @@ class MainActivity : ComponentActivity() {
     private val mediaViewModel by lazy {
         ViewModelProvider(this, MediaWorkspaceViewModel.factory(applicationContext))[MediaWorkspaceViewModel::class.java]
     }
+    private val appViewModel by lazy {
+        ViewModelProvider(this, AppWorkspaceViewModel.factory(applicationContext))[AppWorkspaceViewModel::class.java]
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             AgentOsTheme {
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
                 val mediaState by mediaViewModel.state.collectAsStateWithLifecycle()
+                val appState by appViewModel.state.collectAsStateWithLifecycle()
                 LaunchedEffect(state.voiceReply) {
                     state.voiceReply?.let {
                         (voiceOutput ?: VoiceOutputController(applicationContext, ::rearmHotword)
@@ -97,14 +101,29 @@ class MainActivity : ComponentActivity() {
                             })
                         },
                     )
+                } else if (appState.open) {
+                    AppWorkspace(
+                        state = appState,
+                        onClose = appViewModel::close,
+                        onShowApps = appViewModel::showApps,
+                        onRefreshApps = appViewModel::loadApps,
+                        onRefreshSemantics = appViewModel::refreshSemantics,
+                        onLaunch = appViewModel::requestLaunch,
+                        onClickNode = appViewModel::click,
+                        onScrollNode = appViewModel::scroll,
+                        onSetText = appViewModel::setText,
+                        onAccessibilitySettings = { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
+                        onApprove = appViewModel::approve,
+                        onDeny = appViewModel::deny,
+                    )
                 } else AgentShellContent(
                     state = state,
                     onPromptChanged = viewModel::updatePrompt,
                     onSubmit = {
-                        if (handleMediaCommand(state.prompt)) viewModel.updatePrompt("") else viewModel.submit()
+                        if (handleLocalCommand(state.prompt)) viewModel.updatePrompt("") else viewModel.submit()
                     },
                     onSuggestion = { command ->
-                        if (!handleMediaCommand(command)) viewModel.submit(command)
+                        if (!handleLocalCommand(command)) viewModel.submit(command)
                     },
                     onToggleModelSettings = viewModel::toggleModelSettings,
                     onRemoteModelEnabled = viewModel::setRemoteModelEnabled,
@@ -123,6 +142,7 @@ class MainActivity : ComponentActivity() {
                     onEditKnowledgeRelation = viewModel::editKnowledgeRelation,
                     onRemoveKnowledgeRelation = viewModel::removeKnowledgeRelation,
                     onOpenMedia = mediaViewModel::open,
+                    onOpenApps = appViewModel::open,
                     onNotificationAccess = {
                         startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                     },
@@ -145,7 +165,7 @@ class MainActivity : ComponentActivity() {
         when (action) {
             VoiceCommandReceiver.ACTION_RUN_COMMAND ->
                 VoiceCommandInbox.take(token)?.let { command ->
-                    if (!handleMediaCommand(command)) viewModel.submitVoice(command)
+                    if (!handleLocalCommand(command)) viewModel.submitVoice(command)
                 }
             VoiceCommandReceiver.ACTION_INTERRUPT -> if (VoiceInterruptInbox.take(token)) {
                 voiceOutput?.stop()
@@ -166,6 +186,16 @@ class MainActivity : ComponentActivity() {
             "开始录音", "录音" -> true.also { mediaViewModel.requestAudioRecording() }
             "暂停录音", "继续录音" -> true.also { if (mediaViewModel.state.value.audioRecording) mediaViewModel.toggleAudioPause() }
             "停止录音" -> true.also { if (mediaViewModel.state.value.audioRecording) mediaViewModel.toggleAudio() }
+            else -> false
+        }
+    }
+
+    private fun handleLocalCommand(raw: String): Boolean {
+        if (handleMediaCommand(raw)) return true
+        val command = raw.trim().replace("。", "").replace("！", "")
+        return when (command) {
+            "打开应用能力", "打开应用中心", "应用中心", "应用能力" -> true.also { appViewModel.open() }
+            "读取当前页面", "分析当前页面" -> true.also { appViewModel.open(); appViewModel.refreshSemantics() }
             else -> false
         }
     }
@@ -211,6 +241,7 @@ internal fun AgentShellContent(
     onEditKnowledgeRelation: (String, String, String, String) -> Unit,
     onRemoveKnowledgeRelation: (String) -> Unit,
     onOpenMedia: (MediaWorkspaceMode) -> Unit,
+    onOpenApps: () -> Unit,
     onNotificationAccess: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -231,6 +262,7 @@ internal fun AgentShellContent(
             VoiceCard(state, onVoiceSettings)
             HistoryMindMap(state, onToggleHistory)
             MediaCard(onOpenMedia)
+            AppBridgeCard(onOpenApps)
 
             state.notice?.let { NoticeCard(it) }
             NotificationInbox(state, onNotificationAccess)
@@ -270,6 +302,23 @@ internal fun AgentShellContent(
                 }
             }
             }
+    }
+}
+
+@Composable
+private fun AppBridgeCard(onOpen: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(20.dp),
+    ) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("应用能力桥", style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold)
+            Text("把已安装应用作为后台能力提供者，读取可访问语义或经确认后拉起",
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Button(onClick = onOpen, modifier = Modifier.fillMaxWidth()) { Text("管理应用能力") }
+        }
     }
 }
 

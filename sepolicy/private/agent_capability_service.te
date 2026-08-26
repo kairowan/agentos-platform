@@ -5,3 +5,5 @@ type agent_capability_service_data_file, file_type, data_file_type, core_data_fi
 
 # Replies and callbacks travel over the same Binder channel.
 binder_call(agent_capability_service, agent_shell)
+binder_call(agent_capability_service, system_server)
+binder_call(system_server, agent_capability_service)
