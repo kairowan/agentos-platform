@@ -1,0 +1,10 @@
+427466a1ff5112824bd4ea20b4fbd8adfb2ca651ea976fa29fd111a1d9d95780  apps/AgentShell/src/com/agentos/shell/AgentDesign.kt
+2c45a7cd9b011ccf683a402cf55c197b7f33fecb231565cbad15d3046e48e8bb  apps/AgentShell/src/com/agentos/shell/AgentHome.kt
+cdd434e5811b3c584610b5a6124efdb0c063ae521cffb5ce34e2a38bf0264a97  apps/AgentShell/src/com/agentos/shell/AppWorkspace.kt
+b4127c508a521a61089f0113a5b5c33be5bf334c3e202e1efbacd1027a990757  apps/AgentShell/src/com/agentos/shell/MediaWorkspace.kt
+9208e9193056b02033e8fd19bd22227a00d6365342e947fe14006f80d4c2ddad  apps/AgentShell/src/com/agentos/shell/MainActivity.kt
+88d30a75abb9a3ff7fd4e692a85da9ef8a2cd5b575a709e6eddd112bd5542ff4  apps/AgentShell/src/com/agentos/shell/KnowledgeGraphCanvas.kt
+92230973f46e1a9c5e269357b4fb61102cbfcf95ba16ffe571bd6489a8231538  docs/images/ui-v2/home-v2.png
+8922faf934afb0025f1909bf46bf17959caf780bf2f46cc63bded40be4f5462a  docs/images/ui-v2/app-bridge-v2.png
+234cdf8bb46caabb4035dfc5f4e9c8be5f70bd841dabfce8c5b9459d9a5fc1ac  docs/images/ui-v2/camera-v2.png
+a2803d8d27a73ca927afde88eed31f2ab323e7e842a0e9c5a1f06cd0f74869ed  docs/images/ui-v2/knowledge-v2.png

@@ -7,7 +7,11 @@ Buildable AgentOS product code for AOSP 17. The
 [`agentos`](https://github.com/kairowan/agentos) bootstrap checks this repository
 out at `vendor/agentos` inside the AOSP source tree.
 
-![AgentOS v0.4.0 using voice-first UI and the separate capability service](https://github.com/kairowan/agentos-platform/releases/download/v0.4.0/AgentShell-home.png)
+![AgentOS current voice-first UI](docs/images/ui-v2/home-v2.png)
+
+The image above is the current high-fidelity UI baseline. It mirrors the native
+Compose implementation but is not presented as an emulator screenshot. The full
+four-screen set is documented in [`docs/ui-system.md`](docs/ui-system.md).
 
 ## v0.4 baseline
 

@@ -57,4 +57,14 @@ grep -q 'class GeneratedUiParser' "${project_root}/apps/AgentShell/src/com/agent
 python3 -m json.tool "${project_root}/schemas/generated-ui.schema.json" >/dev/null
 bash -n "${project_root}/scripts/capture-hotword-diagnostics.sh"
 
+for preview in home-v2 app-bridge-v2 camera-v2 knowledge-v2; do
+  test -s "${project_root}/docs/images/ui-v2/${preview}.png"
+done
+
+if command -v sha256sum >/dev/null 2>&1; then
+  (cd "${project_root}" && sha256sum --check docs/images/ui-v2/ui-preview.sha256)
+else
+  (cd "${project_root}" && shasum -a 256 --check docs/images/ui-v2/ui-preview.sha256)
+fi
+
 echo "AgentOS platform checks passed"
