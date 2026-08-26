@@ -266,10 +266,10 @@ internal fun AgentShellContent(
             onRenameKnowledgeEntity, onMoveKnowledgeEntity,
             onEditKnowledgeRelation, onRemoveKnowledgeRelation)
     } else AgentHomeScreen(
-        state, onPromptChanged, onSubmit, onSuggestion, onToggleModelSettings,
+        state, onPromptChanged, onSubmit, onToggleModelSettings,
         onRemoteModelEnabled, onModelEndpointChanged, onModelNameChanged,
         onModelApiKeyChanged, onApprove, onDeny, onVoiceSettings, onToggleHistory,
-        onOpenAvatarStudio, onOpenMedia, onOpenApps, onNotificationAccess,
+        onOpenAvatarStudio,
     )
 }
 
@@ -524,8 +524,13 @@ internal fun NoticeCard(message: String) {
 }
 
 @Composable
-internal fun ApprovalCard(request: ApprovalRequest, onApprove: () -> Unit, onDeny: () -> Unit) {
-    AgentPanel(Modifier.fillMaxWidth(), AgentAmber) {
+internal fun ApprovalCard(
+    request: ApprovalRequest,
+    onApprove: () -> Unit,
+    onDeny: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AgentPanel(modifier.fillMaxWidth(), AgentAmber) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("系统确认", color = Color(0xFFFFC66D), fontWeight = FontWeight.Bold)
             Text(request.title, style = MaterialTheme.typography.titleMedium)

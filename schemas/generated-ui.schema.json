@@ -18,6 +18,19 @@
         "system.settings.wifi.open"
       ]
     },
+    "performance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["emotion", "gesture", "intensity", "tempo", "gazeX", "gazeY"],
+      "properties": {
+        "emotion": { "enum": ["NEUTRAL", "HAPPY", "EXCITED", "FOCUSED", "CONCERNED", "SURPRISED", "CALM"] },
+        "gesture": { "enum": ["IDLE", "LISTEN", "THINK", "TALK", "NOD", "WAVE", "POINT", "CELEBRATE", "COMFORT", "EXPLAIN"] },
+        "intensity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "tempo": { "type": "number", "minimum": 0.5, "maximum": 1.8 },
+        "gazeX": { "type": "number", "minimum": -1, "maximum": 1 },
+        "gazeY": { "type": "number", "minimum": -1, "maximum": 1 }
+      }
+    },
     "blocks": {
       "type": "array",
       "maxItems": 100,

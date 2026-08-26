@@ -72,7 +72,7 @@ internal fun AgentUiState.avatarExpression(): AvatarExpression = when {
     voiceReply != null || isSpeaking -> AvatarExpression.SPEAKING
     voiceStatus.contains("聆听") || voiceStatus.contains("已识别") -> AvatarExpression.LISTENING
     notice != null -> AvatarExpression.CONCERNED
-    else -> AvatarExpression.NEUTRAL
+    else -> performance.expression()
 }
 
 internal fun randomAgentAvatar(random: Random = Random.Default) = AgentAvatar(

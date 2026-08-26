@@ -28,13 +28,14 @@ internal fun AgentAvatarView(
     avatar: AgentAvatar,
     expression: AvatarExpression,
     modifier: Modifier = Modifier,
+    performance: AvatarPerformance = AvatarPerformance(),
 ) {
     AndroidView(
         factory = { AvatarSurfaceView(it) },
         modifier = modifier.semantics {
             contentDescription = "${avatar.name}，可旋转的 3D 角色，${expression.label}表情"
         },
-        update = { it.updateAvatar(avatar, expression) },
+        update = { it.updateAvatar(avatar, expression, performance) },
     )
 }
 
@@ -48,6 +49,12 @@ private class AvatarSurfaceView(context: Context) : GLSurfaceView(context) {
         }
     })
     private var lastX = 0f
+    private val animationTick = object : Runnable {
+        override fun run() {
+            requestRender()
+            postDelayed(this, FRAME_DELAY_MS)
+        }
+    }
 
     init {
         setEGLContextClientVersion(2)
@@ -57,10 +64,10 @@ private class AvatarSurfaceView(context: Context) : GLSurfaceView(context) {
         preserveEGLContextOnPause = true
     }
 
-    fun updateAvatar(avatar: AgentAvatar, expression: AvatarExpression) {
+    fun updateAvatar(avatar: AgentAvatar, expression: AvatarExpression, performance: AvatarPerformance) {
         avatarRenderer.avatar = avatar
         avatarRenderer.expression = expression
-        renderMode = if (expression == AvatarExpression.SPEAKING) RENDERMODE_CONTINUOUSLY else RENDERMODE_WHEN_DIRTY
+        avatarRenderer.performance = performance.normalized()
         requestRender()
     }
 
@@ -80,17 +87,23 @@ private class AvatarSurfaceView(context: Context) : GLSurfaceView(context) {
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         onResume()
+        removeCallbacks(animationTick)
+        post(animationTick)
     }
 
     override fun onDetachedFromWindow() {
+        removeCallbacks(animationTick)
         onPause()
         super.onDetachedFromWindow()
     }
+
+    private companion object { const val FRAME_DELAY_MS = 33L }
 }
 
 private class AvatarRenderer : GLSurfaceView.Renderer {
     @Volatile var avatar = AgentAvatar()
     @Volatile var expression = AvatarExpression.NEUTRAL
+    @Volatile var performance = AvatarPerformance()
     @Volatile var yaw = -12f
     @Volatile var zoom = 5.3f
 
@@ -133,10 +146,18 @@ private class AvatarRenderer : GLSurfaceView.Renderer {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
         GLES20.glUseProgram(program)
         Matrix.setLookAtM(view, 0, 0f, 0.15f, zoom, 0f, 0.05f, 0f, 0f, 1f, 0f)
-        drawAvatar(avatar, expression)
+        drawAvatar(avatar, expression, performance)
     }
 
-    private fun drawAvatar(value: AgentAvatar, mood: AvatarExpression) {
+    private fun drawAvatar(value: AgentAvatar, mood: AvatarExpression, direction: AvatarPerformance) {
+        val seconds = SystemClock.uptimeMillis() / 1_000f * direction.tempo
+        val strength = direction.intensity
+        val breath = sin(seconds * 2.1f) * 0.018f
+        val idleSway = sin(seconds * 0.72f) * 0.018f
+        val gestureWave = if (direction.gesture == AvatarGesture.WAVE) sin(seconds * 8f) * 18f * strength else 0f
+        val gestureNod = if (direction.gesture == AvatarGesture.NOD) sin(seconds * 5.5f) * 0.06f * strength else 0f
+        val talkBeat = if (direction.gesture == AvatarGesture.TALK) sin(seconds * 3.8f) * 8f * strength else 0f
+        val bodyX = idleSway + if (direction.gesture == AvatarGesture.CELEBRATE) sin(seconds * 3f) * 0.06f else 0f
         val skin = value.skinTone.argb.rgb()
         val hair = value.hairColor.argb.rgb()
         val outfit = value.outfitColor.argb.rgb()
@@ -155,7 +176,7 @@ private class AvatarRenderer : GLSurfaceView.Renderer {
             AvatarMaterial.HOLOGRAM -> 0.68f
         }
         val glow = if (value.material == AvatarMaterial.HOLOGRAM) 0.22f + value.glow * 0.5f else value.glow * 0.18f
-        val bodyY = -0.72f - value.bodyHeight * 0.12f
+        val bodyY = -0.72f - value.bodyHeight * 0.12f + breath
         val shoulder = 0.72f + value.shoulderWidth * 0.32f
         val head = 0.73f + value.headScale * 0.18f
         val faceX = when (value.faceShape) {
@@ -172,10 +193,26 @@ private class AvatarRenderer : GLSurfaceView.Renderer {
         }
 
         // Torso, neck, shoulders and arms use one batched sphere mesh with different transforms.
-        drawPart(0f, bodyY, 0f, shoulder, 0.92f + value.bodyHeight * 0.2f, 0.42f, outfit, gloss, glow)
-        drawPart(-shoulder * 0.82f, bodyY - 0.02f, 0f, 0.27f, 0.72f, 0.27f, outfit, gloss, glow)
-        drawPart(shoulder * 0.82f, bodyY - 0.02f, 0f, 0.27f, 0.72f, 0.27f, outfit, gloss, glow)
-        drawPart(0f, -0.02f, 0f, 0.24f, 0.33f, 0.24f, skin, 0.18f, 0f)
+        val leftArm = when (direction.gesture) {
+            AvatarGesture.CELEBRATE -> 128f
+            AvatarGesture.EXPLAIN -> -22f - talkBeat
+            AvatarGesture.COMFORT -> -38f
+            else -> -4f + talkBeat * 0.35f
+        }
+        val rightArm = when (direction.gesture) {
+            AvatarGesture.WAVE -> -132f + gestureWave
+            AvatarGesture.CELEBRATE -> -128f
+            AvatarGesture.POINT -> 72f
+            AvatarGesture.EXPLAIN -> 24f + talkBeat
+            AvatarGesture.COMFORT -> 38f
+            else -> 4f - talkBeat * 0.35f
+        }
+        drawPart(bodyX, bodyY, 0f, shoulder, 0.92f + value.bodyHeight * 0.2f, 0.42f, outfit, gloss, glow)
+        drawPart(bodyX - shoulder * 0.82f, bodyY - 0.02f, 0f, 0.27f, 0.72f, 0.27f,
+            outfit, gloss, glow, leftArm)
+        drawPart(bodyX + shoulder * 0.82f, bodyY - 0.02f, 0f, 0.27f, 0.72f, 0.27f,
+            outfit, gloss, glow, rightArm)
+        drawPart(bodyX, -0.02f + breath, 0f, 0.24f, 0.33f, 0.24f, skin, 0.18f, 0f)
         if (value.outfitStyle == AvatarOutfitStyle.ARMOR) {
             drawPart(0f, bodyY + 0.16f, 0.38f, shoulder * 0.88f, 0.38f, 0.12f, accent, 0.85f, glow)
         } else if (value.outfitStyle == AvatarOutfitStyle.ROBE) {
@@ -185,24 +222,28 @@ private class AvatarRenderer : GLSurfaceView.Renderer {
             drawPart(0.16f, bodyY + 0.18f, 0.39f, 0.08f, 0.52f, 0.06f, accent, gloss, glow)
         }
 
-        drawPart(0f, 0.62f, 0f, head * faceX, head * faceY, head * 0.9f, skin, 0.22f, 0f)
-        drawPart(0f, 0.51f, head * 0.83f, 0.09f, 0.13f, 0.12f, skin, 0.2f, 0f)
+        val headY = 0.62f + breath * 0.7f + gestureNod
+        drawPart(bodyX, headY, 0f, head * faceX, head * faceY, head * 0.9f, skin, 0.22f, 0f)
+        drawPart(bodyX, headY - 0.11f, head * 0.83f, 0.09f, 0.13f, 0.12f, skin, 0.2f, 0f)
 
-        val eyeY = 0.72f
+        val eyeY = headY + 0.1f + direction.gazeY * 0.025f
         val eyeGap = 0.24f + value.eyeSpacing * 0.09f
         val eyeSize = 0.065f + value.eyeSize * 0.045f
+        val blink = (SystemClock.uptimeMillis() % 4_600L) in 0L..115L
         val eyeScaleY = when {
+            blink -> 0.08f
             mood == AvatarExpression.HAPPY || mood == AvatarExpression.SLEEPY -> 0.2f
             value.eyeStyle == AvatarEyeStyle.CALM || value.eyeStyle == AvatarEyeStyle.SHARP -> 0.55f
             else -> 1f
         }
         val eyeZ = head * 0.84f
-        drawPart(-eyeGap, eyeY, eyeZ, eyeSize, eyeSize * eyeScaleY, 0.055f, ink, 0.1f, 0f)
-        drawPart(eyeGap, eyeY, eyeZ, eyeSize, eyeSize * eyeScaleY, 0.055f, ink, 0.1f, 0f)
+        val gazeX = direction.gazeX * 0.035f
+        drawPart(bodyX - eyeGap + gazeX, eyeY, eyeZ, eyeSize, eyeSize * eyeScaleY, 0.055f, ink, 0.1f, 0f)
+        drawPart(bodyX + eyeGap + gazeX, eyeY, eyeZ, eyeSize, eyeSize * eyeScaleY, 0.055f, ink, 0.1f, 0f)
         if (value.eyeStyle == AvatarEyeStyle.BRIGHT && eyeScaleY > 0.5f) {
-            drawPart(-eyeGap - eyeSize * 0.2f, eyeY + eyeSize * 0.2f, eyeZ + 0.054f,
+            drawPart(bodyX - eyeGap - eyeSize * 0.2f + gazeX, eyeY + eyeSize * 0.2f, eyeZ + 0.054f,
                 eyeSize * 0.22f, eyeSize * 0.22f, 0.018f, floatArrayOf(1f, 1f, 1f), 0.8f, glow)
-            drawPart(eyeGap - eyeSize * 0.2f, eyeY + eyeSize * 0.2f, eyeZ + 0.054f,
+            drawPart(bodyX + eyeGap - eyeSize * 0.2f + gazeX, eyeY + eyeSize * 0.2f, eyeZ + 0.054f,
                 eyeSize * 0.22f, eyeSize * 0.22f, 0.018f, floatArrayOf(1f, 1f, 1f), 0.8f, glow)
         }
 
@@ -213,14 +254,17 @@ private class AvatarRenderer : GLSurfaceView.Renderer {
             AvatarExpression.HAPPY, AvatarExpression.LISTENING -> 0.065f
             else -> 0.035f
         }
-        drawPart(0f, 0.38f, eyeZ + 0.02f, mouthWidth, mouthHeight, 0.035f,
+        drawPart(bodyX, headY - 0.24f, eyeZ + 0.02f, mouthWidth, mouthHeight, 0.035f,
             if (mood == AvatarExpression.SPEAKING) floatArrayOf(0.48f, 0.12f, 0.16f) else ink, 0.12f, 0f)
 
-        drawHair(value, hair, head, gloss, glow)
-        drawAccessory(value.accessory, accent, head, gloss, glow)
+        drawHair(value, hair, head, gloss, glow, bodyX, headY - 0.62f)
+        drawAccessory(value.accessory, accent, head, gloss, glow, bodyX, headY - 0.62f)
     }
 
-    private fun drawHair(value: AgentAvatar, color: FloatArray, head: Float, gloss: Float, glow: Float) {
+    private fun drawHair(
+        value: AgentAvatar, color: FloatArray, head: Float, gloss: Float, glow: Float,
+        offsetX: Float, offsetY: Float,
+    ) {
         if (value.hairStyle == AvatarHairStyle.BALD) return
         val count = when (value.hairStyle) {
             AvatarHairStyle.BUZZ -> 5
@@ -234,31 +278,39 @@ private class AvatarRenderer : GLSurfaceView.Renderer {
             val angle = PI.toFloat() * (0.12f + index.toFloat() / (count - 1).coerceAtLeast(1) * 0.76f)
             val x = cos(angle) * head * 0.72f
             val y = 0.67f + sin(angle) * head * 0.76f
-            drawPart(x, y, 0.08f, head * 0.34f, head * 0.34f, head * 0.54f, color, gloss, glow)
+            drawPart(x + offsetX, y + offsetY, 0.08f,
+                head * 0.34f, head * 0.34f, head * 0.54f, color, gloss, glow)
         }
         if (value.hairStyle == AvatarHairStyle.PONYTAIL) {
-            drawPart(head * 0.8f, 0.56f, -0.2f, 0.25f, 0.46f, 0.25f, color, gloss, glow)
+            drawPart(head * 0.8f + offsetX, 0.56f + offsetY, -0.2f,
+                0.25f, 0.46f, 0.25f, color, gloss, glow)
         }
     }
 
-    private fun drawAccessory(type: AvatarAccessory, color: FloatArray, head: Float, gloss: Float, glow: Float) {
+    private fun drawAccessory(
+        type: AvatarAccessory, color: FloatArray, head: Float, gloss: Float, glow: Float,
+        offsetX: Float, offsetY: Float,
+    ) {
         when (type) {
             AvatarAccessory.NONE -> Unit
-            AvatarAccessory.VISOR -> drawPart(0f, 0.72f, head * 0.92f, 0.52f, 0.13f, 0.045f, color, gloss, 0.3f + glow)
+            AvatarAccessory.VISOR -> drawPart(offsetX, 0.72f + offsetY, head * 0.92f,
+                0.52f, 0.13f, 0.045f, color, gloss, 0.3f + glow)
             AvatarAccessory.HEADSET -> {
-                drawPart(-head * 0.86f, 0.65f, 0f, 0.12f, 0.28f, 0.16f, color, gloss, glow)
-                drawPart(head * 0.86f, 0.65f, 0f, 0.12f, 0.28f, 0.16f, color, gloss, glow)
+                drawPart(-head * 0.86f + offsetX, 0.65f + offsetY, 0f,
+                    0.12f, 0.28f, 0.16f, color, gloss, glow)
+                drawPart(head * 0.86f + offsetX, 0.65f + offsetY, 0f,
+                    0.12f, 0.28f, 0.16f, color, gloss, glow)
             }
             AvatarAccessory.HALO -> {
                 repeat(12) { index ->
                     val angle = index * PI.toFloat() * 2f / 12f
-                    drawPart(cos(angle) * 0.52f, 1.58f, sin(angle) * 0.24f,
+                    drawPart(cos(angle) * 0.52f + offsetX, 1.58f + offsetY, sin(angle) * 0.24f,
                         0.07f, 0.07f, 0.07f, color, gloss, 0.5f + glow)
                 }
             }
             AvatarAccessory.HORNS -> {
-                drawPart(-0.38f, 1.37f, 0f, 0.11f, 0.34f, 0.11f, color, gloss, glow)
-                drawPart(0.38f, 1.37f, 0f, 0.11f, 0.34f, 0.11f, color, gloss, glow)
+                drawPart(-0.38f + offsetX, 1.37f + offsetY, 0f, 0.11f, 0.34f, 0.11f, color, gloss, glow)
+                drawPart(0.38f + offsetX, 1.37f + offsetY, 0f, 0.11f, 0.34f, 0.11f, color, gloss, glow)
             }
         }
     }
@@ -266,10 +318,12 @@ private class AvatarRenderer : GLSurfaceView.Renderer {
     private fun drawPart(
         x: Float, y: Float, z: Float, sx: Float, sy: Float, sz: Float,
         color: FloatArray, gloss: Float, glow: Float,
+        rotationZ: Float = 0f,
     ) {
         Matrix.setIdentityM(model, 0)
         Matrix.rotateM(model, 0, yaw, 0f, 1f, 0f)
         Matrix.translateM(model, 0, x, y, z)
+        Matrix.rotateM(model, 0, rotationZ, 0f, 0f, 1f)
         Matrix.scaleM(model, 0, sx, sy, sz)
         Matrix.multiplyMM(viewModel, 0, view, 0, model, 0)
         Matrix.multiplyMM(mvp, 0, projection, 0, viewModel, 0)

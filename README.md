@@ -7,7 +7,7 @@ Buildable AgentOS product code for AOSP 17. The
 [`agentos`](https://github.com/kairowan/agentos) bootstrap checks this repository
 out at `vendor/agentos` inside the AOSP source tree.
 
-![AgentOS current voice-first UI with a customizable 3D avatar](docs/images/ui-v2/home-v4.png)
+![AgentOS full-screen 3D character interface](docs/images/ui-v2/home-v5.png)
 
 The image above is the current high-fidelity UI baseline. It mirrors the native
 Compose implementation but is not presented as an emulator screenshot. The full
@@ -58,7 +58,10 @@ keeps the command composer fixed above the keyboard, makes voice state the prima
 surface, and groups camera, gallery, installed apps, and memory as immediate actions.
 See [`docs/ui-system.md`](docs/ui-system.md).
 
-The voice surface now has a device-local 3D virtual character instead of a fixed orb.
+The home surface is now the device-local 3D virtual character itself instead of a
+dashboard around an avatar. Native idle motion, blink, gaze, listening, thinking,
+speaking/lip motion, and bounded gestures are blended from runtime state and the
+validated model response.
 Its expression follows listening, thinking, speaking, and attention state. A native
 OpenGL ES renderer provides an orbit camera, procedural body/face geometry, materials,
 hair, outfits, accessories, continuous shaping, expression previews, and local

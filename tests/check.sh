@@ -35,6 +35,8 @@ grep -q 'fun CharacterStudio' "${project_root}/apps/AgentShell/src/com/agentos/s
 grep -q 'enum class AvatarExpression' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentAvatar.kt"
 grep -q 'class LocalAgentAvatarStore' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentAvatar.kt"
 grep -q 'class AvatarRenderer' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentAvatar3DView.kt"
+grep -q 'enum class AvatarGesture' "${project_root}/apps/AgentShell/src/com/agentos/shell/AvatarPerformance.kt"
+grep -q 'FRAME_DELAY_MS = 33L' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentAvatar3DView.kt"
 grep -q 'class AvatarStyleParser' "${project_root}/apps/AgentShell/src/com/agentos/shell/AvatarStyleGenerator.kt"
 grep -q 'object AppAdapterCatalog' "${project_root}/services/AgentCapabilityService/src/com/agentos/capability/service/AppBridgePolicy.kt"
 grep -q 'BIND_HOTWORD_DETECTION_SERVICE' "${project_root}/services/AgentVoiceService/AndroidManifest.xml"
@@ -63,7 +65,7 @@ python3 -m json.tool "${project_root}/schemas/generated-ui.schema.json" >/dev/nu
 python3 -m json.tool "${project_root}/schemas/avatar-style.schema.json" >/dev/null
 bash -n "${project_root}/scripts/capture-hotword-diagnostics.sh"
 
-for preview in home-v4 character-studio-v4 app-bridge-v2 camera-v2 knowledge-v2; do
+for preview in home-v5 character-studio-v4 app-bridge-v2 camera-v2 knowledge-v2; do
   test -s "${project_root}/docs/images/ui-v2/${preview}.png"
 done
 

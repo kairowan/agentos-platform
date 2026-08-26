@@ -10,12 +10,21 @@ renderer; this is not a WebView, prerecorded video, or flat sticker.
 - reusable UV-sphere mesh, transformed into the head, body, eyes, hair, clothing,
   accessories, and expression geometry;
 - orbital inspection camera: drag to rotate and pinch to zoom;
-- render-on-demand mode so the home screen does not continuously consume GPU time;
+- visibility-bound 30 fps rendering for natural motion without an unrestricted loop;
 - four material responses: matte, gloss, metal, and hologram;
 - soft, anime, cyber, fantasy, and semi-realistic style families;
 - minimal, suit, armor, robe, and streetwear silhouettes;
 - visor, headset, halo, horn, or no accessory;
-- eight runtime expressions linked to listening, thinking, speaking, and attention.
+- eight runtime expressions linked to listening, thinking, speaking, and attention;
+- layered breathing, body sway, blink, gaze, TTS mouth motion, nod, wave, point,
+  celebrate, comfort, and explanation gestures.
+
+The remote planner may select one emotion and gesture plus bounded intensity, tempo,
+and gaze values in `generated-ui.schema.json`. Unknown motion names, extra fields,
+non-finite values, and out-of-range parameters are rejected. Device state always
+wins: listening, thinking, interruption, and TTS playback override a conflicting
+model direction, while the native idle layer keeps every accepted pose from looking
+mechanically frozen.
 
 The editor also exposes face shape, hair, eye style, skin/hair/outfit colors, face
 width, eye size and spacing, mouth width, head scale, body height, shoulder width,

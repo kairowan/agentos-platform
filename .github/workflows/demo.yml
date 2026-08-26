@@ -76,10 +76,18 @@ jobs:
           sleep 3
           adb shell uiautomator dump /sdcard/agentos-before.xml
           adb pull /sdcard/agentos-before.xml /tmp/agentos-before.xml
-          grep -q 'text="语音智能体"' /tmp/agentos-before.xml
-          grep -q 'text="消息事件"' /tmp/agentos-before.xml
-          tap_coordinates=$(python3 -c 'import re,sys,xml.etree.ElementTree as ET; node=next(n for n in ET.parse(sys.argv[1]).iter("node") if n.get("text") == "查看当前时间"); x1,y1,x2,y2=map(int,re.findall(r"\d+",node.get("bounds"))); print((x1+x2)//2,(y1+y2)//2)' /tmp/agentos-before.xml)
+          grep -q 'text="小 A"' /tmp/agentos-before.xml
+          grep -q 'text="键盘"' /tmp/agentos-before.xml
+          tap_coordinates=$(python3 -c 'import re,sys,xml.etree.ElementTree as ET; node=next(n for n in ET.parse(sys.argv[1]).iter("node") if n.get("text") == "键盘"); x1,y1,x2,y2=map(int,re.findall(r"\d+",node.get("bounds"))); print((x1+x2)//2,(y1+y2)//2)' /tmp/agentos-before.xml)
           adb shell input tap $tap_coordinates
+          sleep 1
+          adb shell uiautomator dump /sdcard/agentos-keyboard.xml
+          adb pull /sdcard/agentos-keyboard.xml /tmp/agentos-keyboard.xml
+          input_coordinates=$(python3 -c 'import re,sys,xml.etree.ElementTree as ET; node=next(n for n in ET.parse(sys.argv[1]).iter("node") if n.get("class") == "android.widget.EditText"); x1,y1,x2,y2=map(int,re.findall(r"\d+",node.get("bounds"))); print((x1+x2)//2,(y1+y2)//2)' /tmp/agentos-keyboard.xml)
+          adb shell input tap $input_coordinates
+          adb shell input text time
+          submit_coordinates=$(python3 -c 'import re,sys,xml.etree.ElementTree as ET; node=next(n for n in ET.parse(sys.argv[1]).iter("node") if n.get("text") == "↑"); x1,y1,x2,y2=map(int,re.findall(r"\d+",node.get("bounds"))); print((x1+x2)//2,(y1+y2)//2)' /tmp/agentos-keyboard.xml)
+          adb shell input tap $submit_coordinates
           for attempt in $(seq 1 10); do
             sleep 1
             adb shell uiautomator dump /sdcard/agentos-window.xml

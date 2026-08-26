@@ -7,7 +7,8 @@ focused on one visible target while the full AOSP image is being built.
 
 ## Screens
 
-- `home-v4.png`: current voice-first home with the native 3D avatar;
+- `home-v5.png`: current full-screen 3D character-as-interface home;
+- `home-v4.png`: previous card-based 3D avatar home;
 - `character-studio-v4.png`: OpenGL viewport, model prompt, 3D style and material controls;
 - `home-v3.png` and `character-studio-v3.png`: previous 2D character baseline;
 - `home-v2.png`: previous orb-based home retained as the v2 historical reference;
@@ -27,8 +28,9 @@ off-white Chinese text, large touch targets, no WebView chrome, and no watermark
 
 Screen-specific prompts require:
 
-- Home: wake-word hero, camera/gallery/apps/memory actions, collapsed local model
-  connection, result card, fixed natural-language composer, and editable avatar.
+- Home: one full-screen speaking 3D character, natural gesture, tiny status/settings
+  controls, a transient subtitle, one voice pill, and a collapsed keyboard fallback;
+  no permanent capability cards or result dashboard.
 - Character Studio: native 3D avatar viewport, orbit gestures, expression previews,
   face/body shaping, hair/outfit/accessory/material controls, a model style prompt,
   randomize, reset, and save.

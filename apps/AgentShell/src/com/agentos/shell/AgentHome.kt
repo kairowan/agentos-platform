@@ -12,20 +12,26 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -33,7 +39,6 @@ internal fun AgentHomeScreen(
     state: AgentUiState,
     onPromptChanged: (String) -> Unit,
     onSubmit: () -> Unit,
-    onSuggestion: (String) -> Unit,
     onToggleModelSettings: () -> Unit,
     onRemoteModelEnabled: (Boolean) -> Unit,
     onModelEndpointChanged: (String) -> Unit,
@@ -44,155 +49,161 @@ internal fun AgentHomeScreen(
     onVoiceSettings: () -> Unit,
     onHistory: () -> Unit,
     onAvatar: () -> Unit,
-    onOpenMedia: (MediaWorkspaceMode) -> Unit,
-    onOpenApps: () -> Unit,
-    onNotificationAccess: () -> Unit,
 ) {
+    var keyboardOpen by remember { mutableStateOf(false) }
     AgentBackdrop {
-        LazyColumn(
-            Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 18.dp),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 16.dp, bottom = 150.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            item { HomeHeader(state.useRemoteModel) }
-            item { VoiceHero(state, onVoiceSettings, onAvatar) }
-            item {
-                QuickActions(
-                    onCamera = { onOpenMedia(MediaWorkspaceMode.CAMERA) },
-                    onGallery = { onOpenMedia(MediaWorkspaceMode.GALLERY) },
-                    onApps = onOpenApps,
-                    onHistory = onHistory,
+        AgentAvatarView(
+            avatar = state.avatar,
+            expression = state.avatarExpression(),
+            performance = state.avatarPerformance(),
+            modifier = Modifier.fillMaxSize(),
+        )
+        StageHeader(
+            name = state.avatar.name,
+            status = when {
+                state.isSpeaking -> "正在和你说话"
+                state.isWorking -> "正在思考"
+                state.voiceStatus.contains("聆听") -> "正在聆听"
+                else -> "随时可唤醒"
+            },
+            onHistory = onHistory,
+            onAvatar = onAvatar,
+            onSettings = onToggleModelSettings,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+        StageCaption(state, Modifier.align(Alignment.BottomCenter)
+            .padding(bottom = if (keyboardOpen) 126.dp else 102.dp))
+        state.approval?.let {
+            ApprovalCard(it, onApprove, onDeny,
+                Modifier.align(Alignment.Center).padding(horizontal = 24.dp))
+        }
+        if (state.showModelSettings) {
+            Box(Modifier.align(Alignment.Center).padding(horizontal = 20.dp)) {
+                ModelSettings(
+                    state, onToggleModelSettings, onRemoteModelEnabled,
+                    onModelEndpointChanged, onModelNameChanged, onModelApiKeyChanged,
                 )
             }
-            item {
-                ModelSettings(state, onToggleModelSettings, onRemoteModelEnabled,
-                    onModelEndpointChanged, onModelNameChanged, onModelApiKeyChanged)
-            }
-            state.notice?.let { item { NoticeCard(it) } }
-            state.approval?.let { item { ApprovalCard(it, onApprove, onDeny) } }
-            item { GeneratedScreenView(state.screen, onSuggestion) }
-            item { NotificationInbox(state, onNotificationAccess) }
         }
-        CommandComposer(
-            prompt = state.prompt,
-            working = state.isWorking,
-            enabled = state.approval == null,
+        StageInput(
+            state = state,
+            keyboardOpen = keyboardOpen,
+            onKeyboardToggle = { keyboardOpen = !keyboardOpen },
             onPromptChanged = onPromptChanged,
             onSubmit = onSubmit,
+            onVoiceSettings = onVoiceSettings,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
     }
 }
 
 @Composable
-private fun HomeHeader(remote: Boolean) {
-    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-        Column {
-            Text("AgentOS", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text("你的系统，只保留意图与能力", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        AgentPill(if (remote) "云端模型" else "本地模式", if (remote) AgentBlue else AgentMint)
-    }
-}
-
-@Composable
-private fun VoiceHero(state: AgentUiState, onSettings: () -> Unit, onAvatar: () -> Unit) {
-    AgentPanel(Modifier.fillMaxWidth(), accent = if (state.isWorking) AgentBlue else AgentMint) {
-        Row(Modifier.fillMaxWidth().padding(20.dp), Arrangement.spacedBy(18.dp), Alignment.CenterVertically) {
-            Box(Modifier.size(92.dp).clickable(onClick = onAvatar)) {
-                AgentAvatarView(state.avatar, state.avatarExpression(), Modifier.fillMaxSize())
-                if (state.isWorking) CircularProgressIndicator(
-                    Modifier.size(32.dp).align(Alignment.Center), strokeWidth = 3.dp, color = AgentBlue,
-                )
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                AgentPill(if (state.isWorking) "正在思考" else "随时可唤醒")
-                Text(if (state.isWorking) "我正在把目标拆成安全的系统动作" else "说“Hey AgentOS”开始",
-                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text(state.voiceStatus, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text("角色", color = AgentMint, modifier = Modifier.clickable(onClick = onAvatar).padding(8.dp))
-                Text("设置", color = AgentBlue, modifier = Modifier.clickable(onClick = onSettings).padding(8.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun QuickActions(
-    onCamera: () -> Unit,
-    onGallery: () -> Unit,
-    onApps: () -> Unit,
+private fun StageHeader(
+    name: String,
+    status: String,
     onHistory: () -> Unit,
+    onAvatar: () -> Unit,
+    onSettings: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("常用能力", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(10.dp)) {
-            QuickAction("相机", "拍摄与录像", "CAM", AgentMint, onCamera, Modifier.weight(1f))
-            QuickAction("图库", "照片与录音", "LIB", AgentBlue, onGallery, Modifier.weight(1f))
+    Row(
+        modifier.fillMaxWidth().statusBarsPadding().padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Surface(color = Color(0x99111F25), shape = RoundedCornerShape(22.dp)) {
+            Column(Modifier.padding(horizontal = 14.dp, vertical = 9.dp)) {
+                Text(name, fontWeight = FontWeight.Bold)
+                Text(status, style = MaterialTheme.typography.labelSmall, color = AgentMint)
+            }
         }
-        Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(10.dp)) {
-            QuickAction("应用", "调用已安装服务", "APP", AgentAmber, onApps, Modifier.weight(1f))
-            QuickAction("记忆", "历史与知识图", "MEM", Color(0xFFC79BFF), onHistory, Modifier.weight(1f))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            StageButton("忆", "打开记忆", onHistory)
+            StageButton("人", "编辑角色", onAvatar)
+            StageButton("⋯", "打开设置", onSettings)
         }
     }
 }
 
 @Composable
-private fun QuickAction(
-    title: String,
-    subtitle: String,
-    mark: String,
-    accent: Color,
-    onClick: () -> Unit,
-    modifier: Modifier,
-) {
-    AgentPanel(modifier.clickable(onClick = onClick), accent) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            AgentPill(mark, accent)
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun StageButton(mark: String, description: String, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier.size(42.dp).semantics { contentDescription = description }.clickable(onClick = onClick),
+        color = Color(0x99111F25),
+        shape = CircleShape,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(mark, color = AgentMint, fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
-private fun CommandComposer(
-    prompt: String,
-    working: Boolean,
-    enabled: Boolean,
+private fun StageCaption(state: AgentUiState, modifier: Modifier = Modifier) {
+    val message = when {
+        state.notice != null -> state.notice
+        state.isWorking -> "我正在理解你的目标…"
+        state.screen == GeneratedScreen.welcome() -> "说“Hey AgentOS”，我在听"
+        else -> state.screen.stageText()
+    }
+    Surface(modifier.padding(horizontal = 28.dp), color = Color(0xB30B171C), shape = RoundedCornerShape(22.dp)) {
+        Text(message, Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+            textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Composable
+private fun StageInput(
+    state: AgentUiState,
+    keyboardOpen: Boolean,
+    onKeyboardToggle: () -> Unit,
     onPromptChanged: (String) -> Unit,
     onSubmit: () -> Unit,
+    onVoiceSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         modifier.navigationBarsPadding().imePadding().padding(12.dp),
-        color = Color(0xF2112026),
-        shape = RoundedCornerShape(26.dp),
-        tonalElevation = 12.dp,
-        shadowElevation = 18.dp,
+        color = Color(0xE6112026),
+        shape = RoundedCornerShape(28.dp),
+        tonalElevation = 10.dp,
     ) {
-        Row(Modifier.fillMaxWidth().padding(10.dp), Arrangement.spacedBy(10.dp), Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = prompt,
-                onValueChange = onPromptChanged,
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("告诉我你想完成什么…") },
-                minLines = 1,
-                maxLines = 3,
-                enabled = enabled && !working,
-                shape = RoundedCornerShape(20.dp),
-            )
-            Button(
-                onClick = onSubmit,
-                enabled = prompt.isNotBlank() && enabled && !working,
-                shape = CircleShape,
-                modifier = Modifier.size(54.dp),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
-            ) { Text(if (working) "…" else "↑", style = MaterialTheme.typography.titleLarge) }
+        if (keyboardOpen) {
+            Row(Modifier.fillMaxWidth().padding(8.dp), Arrangement.spacedBy(8.dp), Alignment.CenterVertically) {
+                TextButton(onClick = onKeyboardToggle) { Text("语音") }
+                OutlinedTextField(
+                    value = state.prompt,
+                    onValueChange = onPromptChanged,
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("文字输入（备用）") },
+                    enabled = state.approval == null && !state.isWorking,
+                    singleLine = true,
+                    shape = RoundedCornerShape(20.dp),
+                )
+                Button(onClick = onSubmit,
+                    enabled = state.prompt.isNotBlank() && state.approval == null && !state.isWorking,
+                    shape = CircleShape, modifier = Modifier.size(50.dp)) { Text("↑") }
+            }
+        } else {
+            Row(Modifier.fillMaxWidth().padding(8.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                TextButton(onClick = onKeyboardToggle) { Text("键盘") }
+                Surface(modifier = Modifier.clickable(onClick = onVoiceSettings),
+                    color = AgentMint.copy(alpha = 0.16f), shape = RoundedCornerShape(20.dp)) {
+                    Text("  ◉  ${state.voiceStatus.take(32)}  ", Modifier.padding(vertical = 10.dp), color = AgentMint)
+                }
+                TextButton(onClick = onVoiceSettings) { Text("语音") }
+            }
         }
     }
 }
+
+private fun GeneratedScreen.stageText(): String = buildString {
+    append(title)
+    blocks.take(3).forEach { block ->
+        when (block) {
+            is UiBlock.Paragraph -> append("\n${block.text}")
+            is UiBlock.Fact -> append("\n${block.label}：${block.value}")
+            is UiBlock.Action -> Unit
+        }
+    }
+}.take(360)

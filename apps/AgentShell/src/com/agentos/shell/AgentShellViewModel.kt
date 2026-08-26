@@ -9,6 +9,7 @@ import com.agentos.capability.core.ApprovalRequest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,6 +42,7 @@ data class AgentUiState(
     val generatedAvatarDraft: AgentAvatar? = null,
     val avatarStyleWorking: Boolean = false,
     val avatarStyleError: String? = null,
+    val performance: AvatarPerformance = AvatarPerformance(),
 ) {
     override fun toString(): String =
         "AgentUiState(promptLength=${prompt.length}, screen=${screen.title}, " +
@@ -56,6 +58,7 @@ class AgentShellViewModel internal constructor(
     private val mutableUiState = MutableStateFlow(AgentUiState())
     val uiState: StateFlow<AgentUiState> = mutableUiState.asStateFlow()
     private var activeTurn: Job? = null
+    private var performanceReset: Job? = null
     private val historyMutex = Mutex()
 
     init {
@@ -213,6 +216,7 @@ class AgentShellViewModel internal constructor(
     fun interruptVoiceTurn() {
         activeTurn?.cancel()
         activeTurn = null
+        performanceReset?.cancel()
         mutableUiState.update {
             it.copy(isWorking = false, voiceReply = null, isSpeaking = false,
                 voiceStatus = "已打断，正在聆听新指令")
@@ -245,8 +249,10 @@ class AgentShellViewModel internal constructor(
                         voiceReply = if (fromVoice) turn.toSpeechText() else null,
                         history = snapshot.entries,
                         knowledgeGraph = snapshot.graph,
+                        performance = turn.performance,
                     )
                 }
+                schedulePerformanceReset(turn.performance)
                 if (config != null) {
                     try {
                         val inferred = ModelKnowledgeExtractor(config).extract(sourceText)
@@ -292,8 +298,10 @@ class AgentShellViewModel internal constructor(
         activeTurn = viewModelScope.launch {
             val turn = runtime.approve(token)
             mutableUiState.update {
-                it.copy(screen = turn.screen, approval = null, notice = turn.notice)
+                it.copy(screen = turn.screen, approval = null, notice = turn.notice,
+                    performance = turn.performance)
             }
+            schedulePerformanceReset(turn.performance)
         }
     }
 
@@ -303,8 +311,10 @@ class AgentShellViewModel internal constructor(
         activeTurn = viewModelScope.launch {
             val turn = runtime.deny(token)
             mutableUiState.update {
-                it.copy(screen = turn.screen, approval = null, notice = turn.notice)
+                it.copy(screen = turn.screen, approval = null, notice = turn.notice,
+                    performance = turn.performance)
             }
+            schedulePerformanceReset(turn.performance)
         }
     }
 
@@ -314,7 +324,21 @@ class AgentShellViewModel internal constructor(
         return ModelConfig(state.modelEndpoint.trim(), state.modelName.trim(), state.modelApiKey)
     }
 
+    private fun schedulePerformanceReset(value: AvatarPerformance) {
+        performanceReset?.cancel()
+        if (value.gesture == AvatarGesture.IDLE) return
+        performanceReset = viewModelScope.launch {
+            delay(4_500)
+            mutableUiState.update { state ->
+                if (state.performance == value) state.copy(
+                    performance = value.copy(gesture = AvatarGesture.IDLE, intensity = 0.35f),
+                ) else state
+            }
+        }
+    }
+
     override fun onCleared() {
+        performanceReset?.cancel()
         historyStore.close()
         gateway.close()
     }

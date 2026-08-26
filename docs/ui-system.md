@@ -3,18 +3,18 @@
 The AgentShell interface is a native Kotlin Compose surface rather than a WebView.
 It uses a dark spatial palette with mint for trusted local actions, blue for model
 or information state, amber for confirmation, and red only for capture or danger.
-Translucent bordered panels provide depth without continuous blur or animation.
+Translucent bordered panels provide depth without continuous blur.
 
-The layout hierarchy is consistent across screens:
+The home is intentionally different from task screens:
 
-1. a title, plain-language subtitle, and compact system status;
-2. one primary task surface rather than a long stack of unrelated settings;
-3. contextual actions close to the content they affect;
-4. destructive or external actions behind a clearly separated confirmation;
-5. the command composer fixed above navigation and the software keyboard.
+1. the full-screen 3D character is the primary system surface;
+2. state, subtitles, and voice controls float briefly over the stage;
+3. the keyboard is an accessibility fallback and stays collapsed;
+4. configuration is hidden until explicitly requested;
+5. destructive or external actions still interrupt with a clear confirmation.
 
-The home screen prioritizes the voice agent, then camera, gallery, installed apps,
-and memory. Model configuration is collapsed by default. App Bridge adds search,
+Camera, gallery, installed apps, memory, and other capabilities are reached through
+natural-language intent instead of a permanent app grid. App Bridge adds search,
 domain filters, declared capability chips, semantic-node actions, and a second
 confirmation step for text input. Media and knowledge screens reuse the same top
 bar, panels, status pills, spacing, colors, and shape language.
@@ -31,7 +31,7 @@ device screenshots. Runtime verification must still be performed on an AOSP buil
 
 | Agent home | Character studio |
 | --- | --- |
-| ![AgentOS home screen](images/ui-v2/home-v4.png) | ![AgentOS 3D character studio](images/ui-v2/character-studio-v4.png) |
+| ![AgentOS home screen](images/ui-v2/home-v5.png) | ![AgentOS 3D character studio](images/ui-v2/character-studio-v4.png) |
 
 | App capability center | Native camera |
 | --- | --- |

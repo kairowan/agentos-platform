@@ -29,7 +29,21 @@ class GeneratedUiParser {
         } else {
             null
         }
-        return AgentPlan(GeneratedScreen(title, blocks), capability)
+        val performance = if (root.has("performance")) parsePerformance(root.getJSONObject("performance"))
+        else AvatarPerformance()
+        return AgentPlan(GeneratedScreen(title, blocks), capability, performance)
+    }
+
+    private fun parsePerformance(value: JSONObject): AvatarPerformance {
+        value.requireOnly(PERFORMANCE_KEYS)
+        return AvatarPerformance(
+            emotion = enumValueOf<AvatarEmotion>(value.requiredBoundedString("emotion", 20).uppercase()),
+            gesture = enumValueOf<AvatarGesture>(value.requiredBoundedString("gesture", 20).uppercase()),
+            intensity = value.boundedFloat("intensity", 0f, 1f),
+            tempo = value.boundedFloat("tempo", 0.5f, 1.8f),
+            gazeX = value.boundedFloat("gazeX", -1f, 1f),
+            gazeY = value.boundedFloat("gazeY", -1f, 1f),
+        )
     }
 
     private fun parseBlock(block: JSONObject): UiBlock = when (block.getString("type")) {
@@ -66,8 +80,14 @@ class GeneratedUiParser {
             require(it.isNotBlank() && it.length <= maxLength) { "Invalid $name" }
         }
 
+    private fun JSONObject.boundedFloat(name: String, min: Float, max: Float): Float =
+        getDouble(name).toFloat().also {
+            require(it.isFinite() && it in min..max) { "Invalid $name" }
+        }
+
     private companion object {
         const val MAX_PAYLOAD_BYTES = 1_048_576
-        val ROOT_KEYS = setOf("version", "title", "blocks", "capability")
+        val ROOT_KEYS = setOf("version", "title", "blocks", "capability", "performance")
+        val PERFORMANCE_KEYS = setOf("emotion", "gesture", "intensity", "tempo", "gazeX", "gazeY")
     }
 }

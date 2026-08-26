@@ -10,12 +10,14 @@ import kotlinx.coroutines.CancellationException
 data class AgentPlan(
     val screen: GeneratedScreen,
     val capability: CapabilityId? = null,
+    val performance: AvatarPerformance = AvatarPerformance(),
 )
 
 data class AgentTurn(
     val screen: GeneratedScreen,
     val approval: ApprovalRequest? = null,
     val notice: String? = null,
+    val performance: AvatarPerformance = AvatarPerformance(),
 )
 
 fun interface AgentPlanner {
@@ -84,28 +86,32 @@ class AgentRuntime(
     suspend fun deny(token: String): AgentTurn = broker.deny(token).toTurn()
 
     private suspend fun execute(plan: AgentPlan, notice: String?): AgentTurn {
-        val id = plan.capability ?: return AgentTurn(plan.screen, notice = notice)
-        return broker.request(id).toTurn(plan.screen, notice)
+        val id = plan.capability ?: return AgentTurn(plan.screen, notice = notice, performance = plan.performance)
+        return broker.request(id).toTurn(plan.screen, notice, plan.performance)
     }
 }
 
 private fun BrokerOutcome.toTurn(
     plannedScreen: GeneratedScreen? = null,
     notice: String? = null,
+    performance: AvatarPerformance = AvatarPerformance(),
 ): AgentTurn = when (this) {
-    is BrokerOutcome.Success -> AgentTurn(result.toScreen(), notice = notice)
+    is BrokerOutcome.Success -> AgentTurn(result.toScreen(), notice = notice, performance = performance)
     is BrokerOutcome.ApprovalRequired -> AgentTurn(
         screen = plannedScreen ?: GeneratedScreen("等待确认", emptyList()),
         approval = request,
         notice = notice,
+        performance = performance,
     )
     is BrokerOutcome.Denied -> AgentTurn(
         GeneratedScreen("操作未执行", listOf(UiBlock.Paragraph(reason))),
         notice = notice,
+        performance = AvatarPerformance(AvatarEmotion.CONCERNED, AvatarGesture.COMFORT),
     )
     is BrokerOutcome.Failed -> AgentTurn(
         GeneratedScreen("能力执行失败", listOf(UiBlock.Paragraph(reason))),
         notice = notice,
+        performance = AvatarPerformance(AvatarEmotion.CONCERNED, AvatarGesture.COMFORT),
     )
 }
 
