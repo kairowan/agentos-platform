@@ -32,6 +32,22 @@ data class ConversationEntry(
 data class KnowledgeEntity(@PrimaryKey val id: String, val name: String, val type: String)
 
 @Entity(
+    tableName = "node_positions",
+    foreignKeys = [ForeignKey(
+        entity = KnowledgeEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["entity_id"],
+        onDelete = ForeignKey.CASCADE,
+        onUpdate = ForeignKey.CASCADE,
+    )],
+)
+data class StoredNodePosition(
+    @PrimaryKey @ColumnInfo(name = "entity_id") val entityId: String,
+    val x: Float,
+    val y: Float,
+)
+
+@Entity(
     tableName = "relations",
     foreignKeys = [
         ForeignKey(entity = KnowledgeEntity::class, parentColumns = ["id"], childColumns = ["source_id"], onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE),
@@ -74,6 +90,7 @@ data class KnowledgeCandidate(
 data class KnowledgeGraph(
     val entities: List<KnowledgeEntity> = emptyList(),
     val relations: List<KnowledgeRelation> = emptyList(),
+    val positions: Map<String, StoredNodePosition> = emptyMap(),
 )
 
 internal data class HistorySnapshot(
@@ -87,9 +104,12 @@ internal interface KnowledgeDao {
     @Query("SELECT * FROM turns ORDER BY created_at, rowid") fun turns(): List<ConversationEntry>
     @Query("SELECT * FROM entities ORDER BY type, name") fun entities(): List<KnowledgeEntity>
     @Query("SELECT * FROM relations ORDER BY rowid") fun relations(): List<RelationRow>
+    @Query("SELECT * FROM node_positions") fun positions(): List<StoredNodePosition>
+    @Query("SELECT * FROM node_positions WHERE entity_id = :entityId") fun position(entityId: String): StoredNodePosition?
     @Insert(onConflict = OnConflictStrategy.ABORT) fun insertTurn(turn: ConversationEntry)
     @Insert(onConflict = OnConflictStrategy.IGNORE) fun insertEntity(entity: KnowledgeEntity)
     @Insert(onConflict = OnConflictStrategy.IGNORE) fun insertRelation(relation: RelationRow)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) fun savePosition(position: StoredNodePosition)
     @Query("DELETE FROM turns") fun deleteTurns()
     @Query("DELETE FROM entities") fun deleteEntities()
     @Query("UPDATE OR IGNORE relations SET source_id = :newId WHERE source_id = :oldId") fun moveSources(oldId: String, newId: String)
@@ -104,8 +124,8 @@ internal interface KnowledgeDao {
 }
 
 @Database(
-    entities = [ConversationEntry::class, KnowledgeEntity::class, RelationRow::class],
-    version = 2,
+    entities = [ConversationEntry::class, KnowledgeEntity::class, RelationRow::class, StoredNodePosition::class],
+    version = 3,
     exportSchema = false,
 )
 internal abstract class AgentKnowledgeDatabase : RoomDatabase() {
@@ -116,7 +136,7 @@ internal abstract class AgentKnowledgeDatabase : RoomDatabase() {
             context.applicationContext,
             AgentKnowledgeDatabase::class.java,
             "agent_knowledge.db",
-        ).addMigrations(MIGRATION_1_2).build()
+        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -139,6 +159,12 @@ internal abstract class AgentKnowledgeDatabase : RoomDatabase() {
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_relations_source_id_predicate_target_id_evidence_turn_id ON relations(source_id, predicate, target_id, evidence, turn_id)")
             }
         }
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS node_positions (entity_id TEXT NOT NULL, x REAL NOT NULL, y REAL NOT NULL, PRIMARY KEY(entity_id), FOREIGN KEY(entity_id) REFERENCES entities(id) ON UPDATE CASCADE ON DELETE CASCADE)")
+            }
+        }
     }
 }
 
@@ -150,6 +176,7 @@ internal interface ConversationHistory {
     fun renameEntity(id: String, name: String, type: String): KnowledgeGraph
     fun editRelation(id: String, predicate: String, targetName: String, targetType: String): KnowledgeGraph
     fun removeRelation(id: String): KnowledgeGraph
+    fun moveEntity(id: String, x: Float, y: Float): KnowledgeGraph
     fun clear()
     fun close()
 }
@@ -169,7 +196,7 @@ internal class LocalConversationHistory(private val context: Context) : Conversa
             KnowledgeRelation(row.id, byId[row.sourceId] ?: return@mapNotNull null,
                 row.predicate, byId[row.targetId] ?: return@mapNotNull null,
                 row.evidence, row.turnId, row.confidence, row.confirmed)
-        })
+        }, dao.positions().associateBy(StoredNodePosition::entityId))
     }
 
     override fun append(prompt: String, responseTitle: String, facts: List<KnowledgeCandidate>): HistorySnapshot {
@@ -192,9 +219,11 @@ internal class LocalConversationHistory(private val context: Context) : Conversa
             if (replacement.id == id) {
                 dao.updateEntityLabel(id, replacement.name, replacement.type)
             } else {
+                val oldPosition = dao.position(id)
                 dao.insertEntity(replacement)
                 dao.moveSources(id, replacement.id)
                 dao.moveTargets(id, replacement.id)
+                oldPosition?.let { dao.savePosition(it.copy(entityId = replacement.id)) }
                 dao.deleteEntity(id)
             }
         }
@@ -213,6 +242,12 @@ internal class LocalConversationHistory(private val context: Context) : Conversa
 
     override fun removeRelation(id: String): KnowledgeGraph {
         database.runInTransaction { dao.deleteRelation(id); dao.deleteOrphanEntities() }
+        return loadGraph()
+    }
+
+    override fun moveEntity(id: String, x: Float, y: Float): KnowledgeGraph {
+        require(x.isFinite() && y.isFinite())
+        dao.savePosition(StoredNodePosition(id, x.coerceIn(-100_000f, 100_000f), y.coerceIn(-100_000f, 100_000f)))
         return loadGraph()
     }
 
@@ -270,6 +305,7 @@ internal object EmptyConversationHistory : ConversationHistory {
     override fun renameEntity(id: String, name: String, type: String) = KnowledgeGraph()
     override fun editRelation(id: String, predicate: String, targetName: String, targetType: String) = KnowledgeGraph()
     override fun removeRelation(id: String) = KnowledgeGraph()
+    override fun moveEntity(id: String, x: Float, y: Float) = KnowledgeGraph()
     override fun clear() = Unit
     override fun close() = Unit
 }

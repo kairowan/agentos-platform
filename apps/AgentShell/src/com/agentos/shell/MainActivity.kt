@@ -89,6 +89,7 @@ class MainActivity : ComponentActivity() {
                     onToggleHistory = viewModel::toggleHistory,
                     onClearHistory = viewModel::clearHistory,
                     onRenameKnowledgeEntity = viewModel::renameKnowledgeEntity,
+                    onMoveKnowledgeEntity = viewModel::moveKnowledgeEntity,
                     onEditKnowledgeRelation = viewModel::editKnowledgeRelation,
                     onRemoveKnowledgeRelation = viewModel::removeKnowledgeRelation,
                     onNotificationAccess = {
@@ -157,6 +158,7 @@ internal fun AgentShellContent(
     onToggleHistory: () -> Unit,
     onClearHistory: () -> Unit,
     onRenameKnowledgeEntity: (String, String, String) -> Unit,
+    onMoveKnowledgeEntity: (String, Float, Float) -> Unit,
     onEditKnowledgeRelation: (String, String, String, String) -> Unit,
     onRemoveKnowledgeRelation: (String) -> Unit,
     onNotificationAccess: () -> Unit,
@@ -164,7 +166,8 @@ internal fun AgentShellContent(
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         if (state.showHistory) {
             KnowledgeScreen(state, onToggleHistory, onClearHistory,
-                onRenameKnowledgeEntity, onEditKnowledgeRelation, onRemoveKnowledgeRelation)
+                onRenameKnowledgeEntity, onMoveKnowledgeEntity,
+                onEditKnowledgeRelation, onRemoveKnowledgeRelation)
         } else Column(
                 modifier = Modifier
                     .statusBarsPadding()
@@ -280,10 +283,13 @@ private fun KnowledgeScreen(
     onBack: () -> Unit,
     onClear: () -> Unit,
     onRenameEntity: (String, String, String) -> Unit,
+    onMoveEntity: (String, Float, Float) -> Unit,
     onEditRelation: (String, String, String, String) -> Unit,
     onRemoveRelation: (String) -> Unit,
 ) {
     var editingRelation by remember { mutableStateOf<KnowledgeRelation?>(null) }
+    var deletingRelation by remember { mutableStateOf<KnowledgeRelation?>(null) }
+    var confirmingClear by remember { mutableStateOf(false) }
     LazyColumn(
         modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 22.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -295,7 +301,7 @@ private fun KnowledgeScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TextButton(onClick = onBack) { Text("返回") }
-                TextButton(onClick = onClear, enabled = state.history.isNotEmpty()) { Text("清除全部") }
+                TextButton(onClick = { confirmingClear = true }, enabled = state.history.isNotEmpty()) { Text("清除全部") }
             }
         }
         item {
@@ -307,7 +313,7 @@ private fun KnowledgeScreen(
         if (state.knowledgeGraph.relations.isEmpty()) {
             item { Text("历史中暂未提取到人物、关系、偏好、项目或长期事实。") }
         } else {
-            item { InteractiveKnowledgeGraph(state.knowledgeGraph, onRenameEntity) }
+            item { InteractiveKnowledgeGraph(state.knowledgeGraph, onRenameEntity, onMoveEntity) }
             item { Text("● 用户知识", color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold) }
             items(state.knowledgeGraph.relations, key = { "${it.sourceTurnId}:${it.source.id}:${it.predicate}:${it.target.id}:${it.evidence}" }) { relation ->
@@ -321,7 +327,7 @@ private fun KnowledgeScreen(
                         Text("来源：${relation.evidence}", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(onClick = { editingRelation = relation }) { Text("修改关系") }
-                            TextButton(onClick = { onRemoveRelation(relation.id) }) { Text("删除") }
+                            TextButton(onClick = { deletingRelation = relation }) { Text("删除") }
                         }
                     }
                 }
@@ -346,6 +352,30 @@ private fun KnowledgeScreen(
             onEditRelation(relation.id, predicate, target, type)
             editingRelation = null
         }
+    }
+    deletingRelation?.let { relation ->
+        AlertDialog(
+            onDismissRequest = { deletingRelation = null },
+            title = { Text("删除这条关系？") },
+            text = { Text("${relation.source.name} ─${relation.predicate}→ ${relation.target.name}\n原始聊天历史不会被删除。") },
+            confirmButton = { TextButton(onClick = {
+                onRemoveRelation(relation.id)
+                deletingRelation = null
+            }) { Text("删除") } },
+            dismissButton = { TextButton(onClick = { deletingRelation = null }) { Text("取消") } },
+        )
+    }
+    if (confirmingClear) {
+        AlertDialog(
+            onDismissRequest = { confirmingClear = false },
+            title = { Text("清除全部历史和知识？") },
+            text = { Text("这会删除所有对话、实体、关系和手动布局，无法撤销。") },
+            confirmButton = { TextButton(onClick = {
+                onClear()
+                confirmingClear = false
+            }) { Text("全部清除") } },
+            dismissButton = { TextButton(onClick = { confirmingClear = false }) { Text("取消") } },
+        )
     }
 }
 

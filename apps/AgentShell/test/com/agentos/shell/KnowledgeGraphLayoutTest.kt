@@ -2,6 +2,7 @@ package com.agentos.shell
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class KnowledgeGraphLayoutTest {
@@ -16,5 +17,19 @@ class KnowledgeGraphLayoutTest {
 
         assertEquals(entities.toSet(), nodes.map { it.entity }.toSet())
         assertFalse(nodes[0].contains(nodes[1].center))
+    }
+
+    @Test
+    fun cullsOnlyEdgesWhoseBoundsMissTheViewport() {
+        assertTrue(lineMayIntersectViewport(
+            androidx.compose.ui.geometry.Offset(-10f, 50f),
+            androidx.compose.ui.geometry.Offset(110f, 50f),
+            0f, 0f, 100f, 100f,
+        ))
+        assertFalse(lineMayIntersectViewport(
+            androidx.compose.ui.geometry.Offset(-20f, -20f),
+            androidx.compose.ui.geometry.Offset(-10f, -10f),
+            0f, 0f, 100f, 100f,
+        ))
     }
 }

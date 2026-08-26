@@ -98,6 +98,10 @@ class AgentShellViewModel internal constructor(
         updateKnowledgeGraph { historyStore.removeRelation(id) }
     }
 
+    fun moveKnowledgeEntity(id: String, x: Float, y: Float) {
+        updateKnowledgeGraph { historyStore.moveEntity(id, x, y) }
+    }
+
     private fun updateKnowledgeGraph(change: () -> KnowledgeGraph) {
         viewModelScope.launch {
             val graph = try {
