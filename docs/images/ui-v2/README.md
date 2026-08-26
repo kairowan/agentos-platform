@@ -8,7 +8,6 @@ focused on one visible target while the full AOSP image is being built.
 ## Screens
 
 - `home-v6.png`: current full-screen home with the original non-human AgentOS Native Form;
-- `home-v5.png`: rejected human/anime assistant exploration, retained only as design history;
 - `home-v4.png`: previous card-based 3D avatar home;
 - `character-studio-v5.png`: current studio with the AgentOS Native Form in its OpenGL viewport;
 - `character-studio-v4.png`: previous human character studio baseline;
