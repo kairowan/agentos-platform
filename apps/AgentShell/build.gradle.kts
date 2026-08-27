@@ -24,6 +24,7 @@ android {
             manifest.srcFile("AndroidManifest.xml")
             java.srcDirs("src")
             res.srcDirs("res")
+            assets.srcDirs("assets")
         }
         getByName("test").java.srcDirs("test")
     }

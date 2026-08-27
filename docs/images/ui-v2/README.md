@@ -7,10 +7,10 @@ is never used as an app texture.
 
 ## Screens
 
-- `thought-field-runtime-v1.png`: deterministic output from the production GLES/WebGL
-  volume shader, indexed 3D glass surfaces, and depth-tested joint rig at the fixed
-  speaking/waving preview state; this is the only current character image generated
-  directly by executable renderer code;
+- `thought-field-runtime-v1.png`: deterministic output from the production offline
+  JavaScript/WebGL runtime, volume shader, indexed 3D glass surfaces, and depth-tested
+  joint rig at the fixed speaking/waving preview state; this is the only current
+  character image generated directly by executable renderer code;
 - `home-v7.png`: full-screen Compose layout mockup containing the Thought Field concept;
 - `home-v6.png`: previous split-seed native-form home;
 - `home-v4.png`: previous card-based 3D avatar home;
@@ -31,12 +31,13 @@ The character baseline is not made with an image generator. From the repository 
 scripts/capture-thought-field-preview.sh
 ```
 
-The capture page loads all production Thought Field shaders from
-`apps/AgentShell/res/raw`, builds the same indexed parameter surface and sphere joint
-mesh as AgentShell, and runs the same background, two glass layers, depth pre-pass,
-and hand hierarchy. It supplies a fixed resolution, time, speaking expression, wave
-gesture, gaze, and normalized shaping values, then captures WebGL 1 output. The app
-never reads the resulting PNG.
+The capture page loads `apps/AgentShell/assets/avatar/runtime.js`, the same runtime
+served to the isolated Android WebView, then loads the production Thought Field
+shaders from `apps/AgentShell/res/raw`. It builds the same indexed parameter surface
+and sphere joint mesh, and runs the same background, two glass layers, depth
+pre-pass, and hand hierarchy. It supplies a fixed resolution, time, speaking
+expression, wave gesture, gaze, and normalized shaping values, then captures WebGL 1
+output. The app never reads the resulting PNG.
 
 ## Layout-mockup generation mode and prompt contract
 

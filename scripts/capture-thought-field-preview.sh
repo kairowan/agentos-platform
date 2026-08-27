@@ -53,7 +53,7 @@ done
   --user-data-dir="${preview_profile}" \
   --window-size=944,2048 \
   --screenshot="${capture_path}" \
-  "http://127.0.0.1:${preview_port}/scripts/thought-field-preview.html?time=12.5" \
+  "http://127.0.0.1:${preview_port}/scripts/thought-field-preview.html?preview=1&time=12.5&shaderBase=/apps/AgentShell/res/raw/" \
   >/dev/null 2>&1 &
 browser_pid=$!
 

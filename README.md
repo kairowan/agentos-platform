@@ -9,11 +9,12 @@ out at `vendor/agentos` inside the AOSP source tree.
 
 ![AgentOS production thought-field shader output](docs/images/ui-v2/thought-field-runtime-v1.png)
 
-The image above is a deterministic capture of the same WebGL 1/OpenGL ES 2 fragment
-shader bundled in AgentShell—not an AI-generated concept image and not a texture used
-by the app. It fixes the runtime uniforms at one speaking/waving frame so the visual
-implementation can be reviewed without an Android device. Native Compose layout
-references are documented separately in [`docs/ui-system.md`](docs/ui-system.md).
+The image above is a deterministic capture of the same offline JavaScript/WebGL
+runtime and production shaders bundled in AgentShell—not an AI-generated concept
+image and not a texture used by the app. It fixes the runtime state at one
+speaking/waving frame so the visual implementation can be reviewed without an
+Android device. Native Compose layout references are documented separately in
+[`docs/ui-system.md`](docs/ui-system.md).
 
 ## v0.4 baseline
 
@@ -69,10 +70,12 @@ consciousness knot, warm core, flowing particles, and dynamic memory constellati
 rather than a human, robot, or anime assistant mascot. Its face and gesture geometry
 condense only while needed and dissolve back into the field. Human, anime, fantasy,
 and other styles remain explicit user customizations in Character Studio.
-Its expression follows listening, thinking, speaking, and attention state. A native
-OpenGL ES renderer combines a procedural volume layer, two deforming indexed glass
-surfaces, and a depth-tested temporary gesture rig for the default identity. It also
-provides an orbit camera, optional mesh-based human families, continuous shaping,
+Its expression follows listening, thinking, speaking, and attention state. The
+default identity runs in an offline JavaScript/WebGL renderer embedded below the
+native Compose controls; a versioned, bounded JSON message carries render state in
+one direction and exposes no Android capability interface to JavaScript. The existing
+native OpenGL ES renderer remains the automatic fallback and still renders optional
+mesh-based human families. Both paths provide an orbit camera, continuous shaping,
 expression previews, and local persistence. An enabled OpenAI-compatible
 model can translate a natural-language
 style request into a strictly validated avatar schema; model output never becomes

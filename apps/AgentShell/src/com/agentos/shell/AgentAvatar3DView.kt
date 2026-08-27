@@ -26,7 +26,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 @Composable
-internal fun AgentAvatarView(
+internal fun NativeAgentAvatarView(
     avatar: AgentAvatar,
     expression: AvatarExpression,
     modifier: Modifier = Modifier,

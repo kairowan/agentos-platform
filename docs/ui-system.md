@@ -1,9 +1,13 @@
-# AgentOS native UI system
+# AgentOS native UI and isolated character renderer
 
-The AgentShell interface is a native Kotlin Compose surface rather than a WebView.
-It uses a dark spatial palette with mint for trusted local actions, blue for model
-or information state, amber for confirmation, and red only for capture or danger.
-Translucent bordered panels provide depth without continuous blur.
+The AgentShell interface, navigation, permissions, subtitles, confirmation, and
+voice controls remain native Kotlin Compose. Only the replaceable full-screen
+`SYSTEM` character canvas runs in an offline WebView/WebGL sandbox. JavaScript
+receives bounded visual state but cannot call Android services or render trusted
+confirmation UI. The design uses a dark spatial palette with mint for trusted local
+actions, blue for model or information state, amber for confirmation, and red only
+for capture or danger. Translucent bordered panels provide depth without continuous
+blur.
 
 The home is intentionally different from task screens:
 
@@ -25,11 +29,11 @@ or execute privileged actions during composition.
 
 ## Runtime-derived avatar baseline
 
-The following frame is rendered from AgentShell's production volume and glass
-shaders, indexed 3D surface, and joint rig by the checked-in WebGL/GLES preview
-harness. It is not AI-generated and is never loaded as a texture by the app. It is
-the source of truth for the character material and effects; real Android GPU
-validation is still required.
+The following frame is rendered by AgentShell's bundled JavaScript runtime using the
+production volume and glass shaders, indexed 3D surface, and joint rig. The checked-in
+browser harness loads that exact runtime. It is not AI-generated and is never loaded
+as a texture by the app. It is the source of truth for the character material and
+effects; real Android System WebView/GPU validation is still required.
 
 ![AgentOS production thought-field shader](images/ui-v2/thought-field-runtime-v1.png)
 

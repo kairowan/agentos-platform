@@ -1,8 +1,12 @@
 # 3D virtual character and model-designed styles
 
-AgentOS renders its system identity as a native procedural 3D character. The home
-voice surface and character studio share one `AgentAvatar` profile and one OpenGL ES
-renderer; this is not a WebView, prerecorded video, or flat sticker.
+AgentOS renders its system identity as a procedural 3D character. The home voice
+surface and character studio share one `AgentAvatar` profile and one bounded render
+protocol. The default `SYSTEM` identity uses a bundled offline JavaScript/WebGL
+runtime inside an isolated WebView; native Compose remains responsible for the page,
+voice, permissions, and trusted controls. Other avatar families and WebGL failures
+use the retained native OpenGL ES renderer. Neither path uses prerecorded video or a
+flat sticker.
 
 ## Original visual identity
 
@@ -21,9 +25,10 @@ identities, never the product's default or brand anchor.
 
 ## Runtime
 
-- native `GLSurfaceView`/OpenGL ES 2.0 pipeline with a full-screen volume pass, two
-  indexed glass-surface layers, a depth pre-pass, and a temporary joint rig for
-  `SYSTEM`; user-created character families retain the existing lit mesh pass;
+- offline JavaScript/WebGL 1 pipeline for `SYSTEM`, with a full-screen volume pass,
+  two indexed glass-surface layers, a depth pre-pass, and a temporary joint rig;
+- native `GLSurfaceView`/OpenGL ES 2.0 fallback plus the existing lit mesh pass for
+  user-created character families;
 - one reusable 64×28 parameter mesh whose vertex shader produces the asymmetric
   head, neck, shoulders, torso, waist, and open tail at runtime; drag rotation now
   changes real surface depth, normals, Fresnel highlights, and occlusion;
@@ -35,7 +40,8 @@ identities, never the product's default or brand anchor.
   motes, constellation links, core bloom, optical face, layered surface refraction,
   and temporary gesture geometry are evaluated from bundled shaders every frame;
 - orbital inspection camera: drag to rotate and pinch to zoom;
-- visibility-bound 30 fps rendering for natural motion without an unrestricted loop;
+- visibility-bound animation with device pixel ratio capped at 1.5; hidden WebViews
+  stop requesting frames, while the native fallback retains its 30 fps ceiling;
 - four material responses: matte, gloss, metal, and hologram;
 - soft, anime, cyber, fantasy, and semi-realistic style families;
 - minimal, suit, armor, robe, and streetwear silhouettes;
@@ -49,8 +55,31 @@ The remote planner may select one emotion and gesture plus bounded intensity, te
 and gaze values in `generated-ui.schema.json`. Unknown motion names, extra fields,
 non-finite values, and out-of-range parameters are rejected. Device state always
 wins: listening, thinking, interruption, and TTS playback override a conflicting
-model direction, while the native idle layer keeps every accepted pose from looking
+model direction, while the bounded idle layer keeps every accepted pose from looking
 mechanically frozen.
+
+## Native-to-renderer middleware
+
+`AvatarRenderCommand` is the only production input to the JavaScript renderer. It
+projects native state into protocol version 1: numeric mood and gesture identifiers,
+bounded intensity/tempo/gaze, speaking and face presence, and normalized shaping
+values. Non-finite values receive safe defaults before JSON serialization. The JSON
+is quoted as data and parsed by the page; model text never becomes executable
+JavaScript.
+
+The WebView loads only `https://avatar.agentos.local/`, an in-process virtual origin
+served from the APK. File/content access, network loads, mixed content, popups,
+multiple windows, and external navigation are disabled. The page has a restrictive
+Content Security Policy and receives no `addJavascriptInterface`, Binder object,
+Capability Broker, microphone, camera, storage, notification, or credential access.
+Renderer readiness and failure are reported through the page title; a missing
+System WebView, load error, SSL error, render-process loss, shader failure, or WebGL
+context loss returns the character to native GLES without affecting the Compose UI.
+
+The boundary is intentionally engine-neutral. `runtime.js` currently uses direct
+WebGL to avoid a new dependency and keep the APK offline; it can later be replaced by
+a bundled Three.js renderer without changing voice, Agent, permission, or Compose
+code as long as protocol version 1 remains supported.
 
 The editor adapts to the selected family. `SYSTEM` exposes consciousness-knot width,
 optical expression, light spacing, voice-mark width, core scale, constellation
@@ -87,11 +116,13 @@ accepting unsafe model output directly inside a privileged system app.
 
 ## Reproducible visual verification
 
-`scripts/thought-field-preview.html` compiles the production volume, surface, part,
-and shared glass shaders through WebGL 1, the browser equivalent of the OpenGL ES 2
-target. It builds the same 64×28 parameter surface and 24×16 joint sphere. Run
-`scripts/capture-thought-field-preview.sh` to render the fixed speaking/waving frame
-stored as `docs/images/ui-v2/thought-field-runtime-v1.png`. That PNG is test evidence,
-not a runtime input. Shader changes must regenerate it; AI-generated images cannot be
-used as proof that a visual feature exists in code. Final device validation still
-needs a representative Android GPU because drivers can differ in precision and speed.
+`scripts/thought-field-preview.html` loads the exact bundled `runtime.js`, which then
+compiles the production volume, surface, part, and shared glass shaders through
+WebGL 1. It builds the same 64×28 parameter surface and 24×16 joint sphere used by
+the Android WebView. Run `scripts/capture-thought-field-preview.sh` to render the
+fixed speaking/waving frame stored as
+`docs/images/ui-v2/thought-field-runtime-v1.png`. That PNG is test evidence, not a
+runtime input. Runtime or shader changes must regenerate it; AI-generated images
+cannot prove a visual feature exists in code. Final validation still needs a
+representative Android System WebView and GPU because providers, drivers, precision,
+and sustained performance can differ.
