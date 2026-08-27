@@ -11,4 +11,5 @@ interface IAgentAppBridgeService {
     AppBridgeReply requestNodeAction(String expectedPackage, String nodePath, int action, String value);
     AppBridgeReply approve(String token);
     AppBridgeReply deny(String token);
+    void cancelPending();
 }

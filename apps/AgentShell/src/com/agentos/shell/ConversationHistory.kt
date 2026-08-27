@@ -26,10 +26,29 @@ data class ConversationEntry(
     @ColumnInfo(name = "created_at") val createdAtMillis: Long,
     val prompt: String,
     @ColumnInfo(name = "response_title") val responseTitle: String,
+    @ColumnInfo(name = "response_body", defaultValue = "''") val responseBody: String = "",
+    @ColumnInfo(name = "task_id") val taskId: String? = null,
+    @ColumnInfo(name = "task_state", defaultValue = "'LEGACY'") val taskState: String = TaskState.LEGACY.name,
+    @ColumnInfo(name = "memory_excluded", defaultValue = "0") val memoryExcluded: Boolean = false,
+)
+
+@Entity(tableName = "tasks")
+data class TaskRecord(
+    @PrimaryKey val id: String,
+    val session: String,
+    val prompt: String,
+    val state: String,
+    val capability: String,
+    val detail: String,
+    @ColumnInfo(name = "created_at") val createdAtMillis: Long,
+    @ColumnInfo(name = "updated_at") val updatedAtMillis: Long,
 )
 
 @Entity(tableName = "entities")
 data class KnowledgeEntity(@PrimaryKey val id: String, val name: String, val type: String)
+
+@Entity(tableName = "suppressed_relations")
+internal data class SuppressedRelation(@PrimaryKey val key: String)
 
 @Entity(
     tableName = "node_positions",
@@ -68,6 +87,7 @@ internal data class RelationRow(
     @ColumnInfo(name = "turn_id") val turnId: String,
     val confidence: Double,
     val confirmed: Boolean,
+    @ColumnInfo(name = "user_corrected", defaultValue = "0") val userCorrected: Boolean = false,
 )
 
 data class KnowledgeRelation(
@@ -79,6 +99,7 @@ data class KnowledgeRelation(
     val sourceTurnId: String,
     val confidence: Double,
     val confirmed: Boolean,
+    val userCorrected: Boolean = false,
 )
 
 data class KnowledgeCandidate(
@@ -101,6 +122,23 @@ internal data class HistorySnapshot(
 
 @Dao
 internal interface KnowledgeDao {
+    @Query("SELECT * FROM tasks ORDER BY created_at, rowid") fun tasks(): List<TaskRecord>
+    @Query("SELECT * FROM tasks WHERE id = :id") fun task(id: String): TaskRecord?
+    @Insert(onConflict = OnConflictStrategy.ABORT) fun insertTask(task: TaskRecord)
+    @Query("UPDATE tasks SET state = :state, capability = :capability, detail = :detail, updated_at = :now WHERE id = :id")
+    fun updateTask(id: String, state: String, capability: String, detail: String, now: Long)
+    @Query("DELETE FROM tasks") fun deleteTasks()
+    @Query("UPDATE turns SET memory_excluded = 1 WHERE id IN (SELECT turn_id FROM relations WHERE source_id = :source AND predicate = :predicate AND target_id = :target)")
+    fun excludeRelationSources(source: String, predicate: String, target: String)
+    @Query("UPDATE turns SET memory_excluded = 1 WHERE id = :id") fun excludeMemory(id: String)
+    @Query("UPDATE relations SET user_corrected = 1 WHERE source_id = :id OR target_id = :id") fun markEntityCorrected(id: String)
+    @Query("SELECT * FROM turns WHERE id = :id") fun turn(id: String): ConversationEntry?
+    @Query("SELECT * FROM relations WHERE id = :id") fun relation(id: String): RelationRow?
+    @Query("SELECT EXISTS(SELECT 1 FROM suppressed_relations WHERE `key` = :key)") fun isSuppressed(key: String): Boolean
+    @Insert(onConflict = OnConflictStrategy.IGNORE) fun suppress(value: SuppressedRelation)
+    @Query("DELETE FROM suppressed_relations") fun clearSuppressions()
+    @Query("DELETE FROM relations WHERE source_id = :source AND predicate = :predicate AND target_id = :target")
+    fun deleteMatchingRelations(source: String, predicate: String, target: String)
     @Query("SELECT * FROM turns ORDER BY created_at, rowid") fun turns(): List<ConversationEntry>
     @Query("SELECT * FROM entities ORDER BY type, name") fun entities(): List<KnowledgeEntity>
     @Query("SELECT * FROM relations ORDER BY rowid") fun relations(): List<RelationRow>
@@ -116,16 +154,18 @@ internal interface KnowledgeDao {
     @Query("UPDATE OR IGNORE relations SET target_id = :newId WHERE target_id = :oldId") fun moveTargets(oldId: String, newId: String)
     @Query("DELETE FROM entities WHERE id = :id") fun deleteEntity(id: String)
     @Query("UPDATE entities SET name = :name, type = :type WHERE id = :id") fun updateEntityLabel(id: String, name: String, type: String)
-    @Query("UPDATE OR IGNORE relations SET predicate = :predicate, target_id = :targetId, confirmed = 1 WHERE id = :id")
+    @Query("UPDATE relations SET predicate = :predicate, target_id = :targetId, confirmed = 1, confidence = 1, user_corrected = 1 WHERE id = :id")
     fun updateRelation(id: String, predicate: String, targetId: String)
+    @Query("DELETE FROM relations WHERE id != :id AND source_id = :source AND predicate = :predicate AND target_id = :target AND evidence = :evidence AND turn_id = :turn")
+    fun deleteEditDuplicate(id: String, source: String, predicate: String, target: String, evidence: String, turn: String)
     @Query("DELETE FROM relations WHERE id = :id") fun deleteRelation(id: String)
     @Query("DELETE FROM entities WHERE id NOT IN (SELECT source_id FROM relations UNION SELECT target_id FROM relations)")
     fun deleteOrphanEntities()
 }
 
 @Database(
-    entities = [ConversationEntry::class, KnowledgeEntity::class, RelationRow::class, StoredNodePosition::class],
-    version = 3,
+    entities = [ConversationEntry::class, TaskRecord::class, KnowledgeEntity::class, RelationRow::class, StoredNodePosition::class, SuppressedRelation::class],
+    version = 5,
     exportSchema = false,
 )
 internal abstract class AgentKnowledgeDatabase : RoomDatabase() {
@@ -136,7 +176,27 @@ internal abstract class AgentKnowledgeDatabase : RoomDatabase() {
             context.applicationContext,
             AgentKnowledgeDatabase::class.java,
             "agent_knowledge.db",
-        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
+        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build()
+
+        internal val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE turns ADD COLUMN response_body TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE turns ADD COLUMN task_id TEXT")
+                db.execSQL("ALTER TABLE turns ADD COLUMN task_state TEXT NOT NULL DEFAULT 'LEGACY'")
+                db.execSQL("ALTER TABLE turns ADD COLUMN memory_excluded INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE relations ADD COLUMN user_corrected INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("CREATE TABLE tasks (id TEXT NOT NULL PRIMARY KEY, session TEXT NOT NULL, prompt TEXT NOT NULL, state TEXT NOT NULL, capability TEXT NOT NULL, detail TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
+                // v4 tombstones lack source IDs: do not export old raw turns that
+                // might restore something the user already corrected or forgot.
+                db.execSQL("UPDATE turns SET memory_excluded = 1 WHERE EXISTS (SELECT 1 FROM suppressed_relations)")
+            }
+        }
+
+        internal val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS suppressed_relations (`key` TEXT NOT NULL, PRIMARY KEY(`key`))")
+            }
+        }
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -172,6 +232,13 @@ internal interface ConversationHistory {
     fun load(): List<ConversationEntry>
     fun loadGraph(): KnowledgeGraph
     fun append(prompt: String, responseTitle: String, facts: List<KnowledgeCandidate>): HistorySnapshot
+    fun loadTasks(): List<TaskRecord>
+    fun beginTask(prompt: String, id: String = UUID.randomUUID().toString()): TaskRecord
+    fun task(id: String): TaskRecord?
+    fun setTaskState(id: String, state: TaskState, capability: String = "", detail: String = ""): Boolean
+    fun recordResult(id: String, prompt: String, title: String, body: String, state: TaskState, facts: List<KnowledgeCandidate>): HistorySnapshot?
+    fun interruptTask(id: String): TaskRecord?
+    fun recoverTasks(): List<TaskRecord>
     fun merge(turnId: String, facts: List<KnowledgeCandidate>): KnowledgeGraph
     fun renameEntity(id: String, name: String, type: String): KnowledgeGraph
     fun editRelation(id: String, predicate: String, targetName: String, targetType: String): KnowledgeGraph
@@ -181,13 +248,73 @@ internal interface ConversationHistory {
     fun close()
 }
 
-internal class LocalConversationHistory(private val context: Context) : ConversationHistory {
-    private val database = AgentKnowledgeDatabase.open(context)
-    private val dao = database.knowledgeDao()
-
-    init { migrateLegacyHistory() }
+internal class LocalConversationHistory(
+    private val context: Context,
+    private val database: AgentKnowledgeDatabase = AgentKnowledgeDatabase.open(context),
+    migrateLegacy: Boolean = true,
+    private val session: String = UUID.randomUUID().toString(),
+) : ConversationHistory {
+    // Construction happens in the main-thread ViewModel factory; opening/migrating
+    // belongs to the first history operation, whose caller already uses Dispatchers.IO.
+    private val dao by lazy { database.knowledgeDao().also { if (migrateLegacy) migrateLegacyHistory(it) } }
 
     override fun load() = dao.turns()
+    override fun loadTasks() = dao.tasks()
+
+    override fun task(id: String) = dao.task(id)
+
+    override fun beginTask(prompt: String, id: String): TaskRecord {
+        require(prompt.isNotBlank() && prompt.length <= 8_000)
+        val now = System.currentTimeMillis()
+        return TaskRecord(id, session, prompt, TaskState.PLANNING.name,
+            "", "", now, now).also(dao::insertTask)
+    }
+
+    override fun setTaskState(id: String, state: TaskState, capability: String, detail: String): Boolean {
+        var changed = false
+        database.runInTransaction {
+            val old = dao.task(id) ?: return@runInTransaction
+            if (old.session != session || !TaskState.parse(old.state).canTransitionTo(state)) return@runInTransaction
+            dao.updateTask(id, state.name, capability.ifEmpty { old.capability }, detail.take(2_000), System.currentTimeMillis())
+            changed = true
+        }
+        return changed
+    }
+
+    override fun recordResult(id: String, prompt: String, title: String, body: String, state: TaskState, facts: List<KnowledgeCandidate>): HistorySnapshot? {
+        var turnId: String? = null
+        database.runInTransaction {
+            if (!setTaskState(id, state, detail = title)) return@runInTransaction
+            val value = ConversationEntry(UUID.randomUUID().toString(), System.currentTimeMillis(),
+                prompt.take(8_000), title, body, id, state.name)
+            dao.insertTurn(value)
+            insertFacts(value.id, facts)
+            turnId = value.id
+        }
+        return turnId?.let { HistorySnapshot(it, load(), loadGraph()) }
+    }
+
+    override fun interruptTask(id: String): TaskRecord? {
+        database.runInTransaction {
+            val old = dao.task(id) ?: return@runInTransaction
+            if (old.session == session) interrupt(old)
+        }
+        return dao.task(id)
+    }
+
+    private fun interrupt(old: TaskRecord) {
+        val previous = TaskState.parse(old.state)
+        if (!previous.active) return
+        val next = previous.interrupted()
+        dao.updateTask(old.id, next.name, old.capability,
+            if (next == TaskState.UNKNOWN) "执行期间中断，请核对实际结果；不会自动重试" else "未完成的请求已作废，需要重新发起并确认",
+            System.currentTimeMillis())
+    }
+
+    override fun recoverTasks(): List<TaskRecord> {
+        database.runInTransaction { dao.tasks().filter { it.session != session }.forEach(::interrupt) }
+        return loadTasks() // Never resume a task or restore an approval token.
+    }
 
     override fun loadGraph(): KnowledgeGraph {
         val entities = dao.entities()
@@ -195,7 +322,7 @@ internal class LocalConversationHistory(private val context: Context) : Conversa
         return KnowledgeGraph(entities, dao.relations().mapNotNull { row ->
             KnowledgeRelation(row.id, byId[row.sourceId] ?: return@mapNotNull null,
                 row.predicate, byId[row.targetId] ?: return@mapNotNull null,
-                row.evidence, row.turnId, row.confidence, row.confirmed)
+                row.evidence, row.turnId, row.confidence, row.confirmed, row.userCorrected)
         }, dao.positions().associateBy(StoredNodePosition::entityId))
     }
 
@@ -209,7 +336,7 @@ internal class LocalConversationHistory(private val context: Context) : Conversa
     }
 
     override fun merge(turnId: String, facts: List<KnowledgeCandidate>): KnowledgeGraph {
-        database.runInTransaction { insertFacts(turnId, facts) }
+        database.runInTransaction { insertFacts(turnId, facts.map { it.copy(explicit = false) }) }
         return loadGraph()
     }
 
@@ -219,6 +346,8 @@ internal class LocalConversationHistory(private val context: Context) : Conversa
             if (replacement.id == id) {
                 dao.updateEntityLabel(id, replacement.name, replacement.type)
             } else {
+                dao.relations().filter { it.sourceId == id || it.targetId == id }.forEach(::suppress)
+                dao.markEntityCorrected(id)
                 val oldPosition = dao.position(id)
                 dao.insertEntity(replacement)
                 dao.moveSources(id, replacement.id)
@@ -232,16 +361,31 @@ internal class LocalConversationHistory(private val context: Context) : Conversa
 
     override fun editRelation(id: String, predicate: String, targetName: String, targetType: String): KnowledgeGraph {
         val target = entity(targetName, targetType)
+        val validPredicate = predicate.validPredicate()
         database.runInTransaction {
+            val old = dao.relation(id) ?: return@runInTransaction
+            // Keep the original evidence locally, but prevent old raw conversation
+            // from being reintroduced to a model after a user correction.
+            dao.excludeRelationSources(old.sourceId, old.predicate, old.targetId)
             dao.insertEntity(target)
-            dao.updateRelation(id, predicate.validPredicate(), target.id)
+            dao.deleteEditDuplicate(id, old.sourceId, validPredicate, target.id, old.evidence, old.turnId)
+            dao.updateRelation(id, validPredicate, target.id)
+            if (old.predicate != validPredicate || old.targetId != target.id) {
+                suppress(old)
+                dao.deleteMatchingRelations(old.sourceId, old.predicate, old.targetId)
+            }
             dao.deleteOrphanEntities()
         }
         return loadGraph()
     }
 
     override fun removeRelation(id: String): KnowledgeGraph {
-        database.runInTransaction { dao.deleteRelation(id); dao.deleteOrphanEntities() }
+        database.runInTransaction {
+            val old = dao.relation(id) ?: return@runInTransaction
+            suppress(old)
+            dao.deleteMatchingRelations(old.sourceId, old.predicate, old.targetId)
+            dao.deleteOrphanEntities()
+        }
         return loadGraph()
     }
 
@@ -251,27 +395,44 @@ internal class LocalConversationHistory(private val context: Context) : Conversa
         return loadGraph()
     }
 
-    override fun clear() = database.runInTransaction { dao.deleteTurns(); dao.deleteEntities() }
+    override fun clear() = database.runInTransaction {
+        dao.deleteTurns(); dao.deleteEntities(); dao.clearSuppressions(); dao.deleteTasks()
+    }
 
     override fun close() = database.close()
 
     private fun insertFacts(turnId: String, facts: List<KnowledgeCandidate>) {
+        val turn = dao.turn(turnId) ?: return // A late extraction cannot resurrect a deleted turn.
         facts.take(50).forEach { raw ->
             val fact = raw.validated() ?: return@forEach
+            if (!turn.prompt.contains(fact.evidence)) return@forEach
             val source = entity(fact.sourceName, fact.sourceType)
             val target = entity(fact.targetName, fact.targetType)
+            if (dao.isSuppressed(relationKey(source.id, fact.predicate, target.id))) {
+                dao.excludeMemory(turnId)
+                return@forEach
+            }
             dao.insertEntity(source); dao.insertEntity(target)
             dao.insertRelation(RelationRow(UUID.randomUUID().toString(), source.id, fact.predicate,
                 target.id, fact.evidence, turnId, fact.confidence, fact.explicit))
         }
     }
 
-    private fun migrateLegacyHistory() {
-        if (load().isNotEmpty()) return
+    private fun suppress(row: RelationRow) {
+        dao.excludeRelationSources(row.sourceId, row.predicate, row.targetId)
+        dao.suppress(SuppressedRelation(relationKey(row.sourceId, row.predicate, row.targetId)))
+    }
+
+    // ponytail: Exact semantic triples are suppressed across turns. Paraphrase-equivalent
+    // facts need an explicit review/alias model; do not claim semantic deduplication here.
+    private fun relationKey(source: String, predicate: String, target: String) = "$source\u0000$predicate\u0000$target"
+
+    private fun migrateLegacyHistory(legacyDao: KnowledgeDao) {
+        if (legacyDao.turns().isNotEmpty()) return
         val preferences = context.getSharedPreferences("conversation_history", Context.MODE_PRIVATE)
         val entries = ConversationHistoryCodec.decode(preferences.getString("entries", null))
         if (entries.isEmpty()) return
-        database.runInTransaction { entries.forEach { dao.insertTurn(it) } }
+        database.runInTransaction { entries.forEach { legacyDao.insertTurn(it) } }
         preferences.edit().remove("entries").apply()
     }
 }
@@ -301,6 +462,13 @@ internal object EmptyConversationHistory : ConversationHistory {
     override fun load() = emptyList<ConversationEntry>()
     override fun loadGraph() = KnowledgeGraph()
     override fun append(prompt: String, responseTitle: String, facts: List<KnowledgeCandidate>) = HistorySnapshot("", emptyList(), KnowledgeGraph())
+    override fun loadTasks() = emptyList<TaskRecord>()
+    override fun beginTask(prompt: String, id: String) = TaskRecord(id, "", prompt, TaskState.PLANNING.name, "", "", 0, 0)
+    override fun task(id: String): TaskRecord? = null
+    override fun setTaskState(id: String, state: TaskState, capability: String, detail: String) = true
+    override fun recordResult(id: String, prompt: String, title: String, body: String, state: TaskState, facts: List<KnowledgeCandidate>) = append(prompt, title, facts)
+    override fun interruptTask(id: String): TaskRecord? = null
+    override fun recoverTasks() = loadTasks()
     override fun merge(turnId: String, facts: List<KnowledgeCandidate>) = KnowledgeGraph()
     override fun renameEntity(id: String, name: String, type: String) = KnowledgeGraph()
     override fun editRelation(id: String, predicate: String, targetName: String, targetType: String) = KnowledgeGraph()

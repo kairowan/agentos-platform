@@ -3,3 +3,16 @@
 local.properties
 .DS_Store
 **/.DS_Store
+artifacts/
+**/__pycache__/
+# Public visual assets are reviewed explicitly; runtime captures belong in artifacts/.
+/docs/images/*
+!/docs/images/ui-v2/
+/docs/images/ui-v2/*
+!/docs/images/ui-v2/README.md
+!/docs/images/ui-v2/ui-preview.sha256
+!/docs/images/ui-v2/thought-field-home-concept.png
+!/docs/images/ui-v2/thought-field-studio-concept.png
+!/docs/images/ui-v2/app-bridge-v2.png
+!/docs/images/ui-v2/camera-v2.png
+!/docs/images/ui-v2/knowledge-v2.png

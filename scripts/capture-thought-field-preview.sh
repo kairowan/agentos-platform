@@ -2,7 +2,8 @@
 set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-output_path="${1:-${project_root}/docs/images/ui-v2/thought-field-runtime-v1.png}"
+output_path="${1:-${project_root}/artifacts/renderer-check/thought-field.png}"
+mkdir -p -- "$(dirname "${output_path}")"
 preview_port="${AGENTOS_PREVIEW_PORT:-8765}"
 preview_profile="$(mktemp -d)"
 capture_path="${preview_profile}/thought-field.png"

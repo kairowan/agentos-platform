@@ -63,7 +63,7 @@ internal fun AgentOsTheme(content: @Composable () -> Unit) {
             medium = RoundedCornerShape(20.dp),
             large = RoundedCornerShape(28.dp),
         ),
-        content = content,
+        content = { Surface(Modifier.fillMaxSize(), color = AgentBackground, content = content) },
     )
 }
 

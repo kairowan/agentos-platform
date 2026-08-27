@@ -23,9 +23,10 @@ been validated. See the [full-build evidence runbook](https://github.com/kairowa
 
 These maintainer-selected design references show the intended appearance, not
 implemented rendering fidelity or verified features. They are documentation assets,
-not textures loaded by the app. The separate
-[renderer-derived capture](docs/images/ui-v2/thought-field-runtime-v1.png) and
-[UI implementation notes](docs/ui-system.md) remain available for comparison.
+not textures loaded by the app. Only these two approved images are used for public
+3D presentation. Runtime screenshots and recordings stay in ignored local
+`artifacts/`, not GitHub documentation, release assets or Actions artifacts.
+See the [UI implementation notes](docs/ui-system.md) for the implementation boundary.
 
 ## v0.4.0 APK pre-release baseline
 
@@ -109,6 +110,25 @@ only registered capability IDs; the Broker independently decides whether an oper
 executes, is denied, or requires trusted confirmation.
 
 ## Standalone build
+
+### Developer preview workbench
+
+The current source adds **native telephone/text-SMS components** to the existing
+Capability Service APK, expiring one-time confirmation, cancellation invalidation,
+Room relation-forgetting safeguards, and per-utterance TTS completion tracking.
+Use the [preview guide](docs/developer-preview.md) to build one matching three-APK
+bundle, install without changing defaults, reproduce the offline confirmation flow,
+and restore/uninstall safely. See [small contribution tasks](docs/contribution-starters.md).
+
+This is not a new claim of full AOSP, carrier, DSP or AI-in-call validation. Telephone
+and SMS are experimental: **do not replace your main SMS client**; MMS/RCS are not
+implemented. Source changes and local artifacts do not update the old v0.4.0 release.
+
+[Local verification results](docs/preview-validation.md)
+record the offline approval/history flow, emulator calls/SMS, and remaining limits.
+The written results are separate from the two visual-target images above; runtime
+3D captures are not published.
+
 
 Install JDK 17 and Android SDK 35, then use Gradle 8.12:
 

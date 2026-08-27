@@ -59,8 +59,22 @@ grep -q 'uniform float uLayerScale' "${project_root}/apps/AgentShell/res/raw/tho
 grep -q 'uniform vec3 uInverseScale' "${project_root}/apps/AgentShell/res/raw/thought_field_part_vertex.glsl"
 grep -q 'uniform float uSurfacePass' "${project_root}/apps/AgentShell/res/raw/thought_field_glass_fragment.glsl"
 ! grep -q 'sampler2D' "${project_root}/apps/AgentShell/res/raw/thought_field_glass_fragment.glsl"
+grep -q "'tf_shared.glsl'" "${project_root}/apps/AgentShell/assets/avatar/runtime.js"
+grep -q "'tf_strand_vertex.glsl'" "${project_root}/apps/AgentShell/res/raw/tf_shared.glsl" 2>/dev/null || true
+grep -q 'float fieldWidth(float y)' "${project_root}/apps/AgentShell/res/raw/tf_shared.glsl"
+grep -q 'gl_VertexID' "${project_root}/apps/AgentShell/res/raw/tf_spark_vertex.glsl"
+! grep -q 'sampler2D' "${project_root}/apps/AgentShell/res/raw/tf_spark_vertex.glsl"
+grep -q 'uViewProjection' "${project_root}/apps/AgentShell/res/raw/tf_strand_vertex.glsl"
+grep -q 'uThreshold' "${project_root}/apps/AgentShell/res/raw/tf_bright_fragment.glsl"
+grep -q 'uDown' "${project_root}/apps/AgentShell/res/raw/tf_blur_fragment.glsl"
+grep -q 'uBloomStrength' "${project_root}/apps/AgentShell/res/raw/tf_composite_fragment.glsl"
+grep -q "'tf_strand_vertex.glsl'" "${project_root}/apps/AgentShell/assets/avatar/runtime.js"
+grep -q 'getContext(.webgl2.' "${project_root}/apps/AgentShell/assets/avatar/runtime.js"
+grep -q 'RGBA16F' "${project_root}/apps/AgentShell/assets/avatar/runtime.js"
+grep -q '/shaders/tf_strand_vertex.glsl' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentAvatarWebView.kt"
+grep -q '/shaders/tf_glass_fragment.glsl' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentAvatarWebView.kt"
 grep -q 'apps/AgentShell/assets/avatar/runtime.js' "${project_root}/scripts/thought-field-preview.html"
-grep -q "'thought_field_fragment.glsl'" "${project_root}/apps/AgentShell/assets/avatar/runtime.js"
+grep -q "'tf_glass_vertex.glsl'" "${project_root}/apps/AgentShell/assets/avatar/runtime.js"
 grep -q 'createSurface(rings = 64, segments = 28)' "${project_root}/apps/AgentShell/assets/avatar/runtime.js"
 grep -q 'enum class AvatarGesture' "${project_root}/apps/AgentShell/src/com/agentos/shell/AvatarPerformance.kt"
 grep -q 'FRAME_DELAY_MS = 33L' "${project_root}/apps/AgentShell/src/com/agentos/shell/AgentAvatar3DView.kt"
@@ -93,7 +107,7 @@ python3 -m json.tool "${project_root}/schemas/avatar-style.schema.json" >/dev/nu
 bash -n "${project_root}/scripts/capture-hotword-diagnostics.sh"
 bash -n "${project_root}/scripts/capture-thought-field-preview.sh"
 
-for preview in thought-field-runtime-v1 home-v7 character-studio-v6 app-bridge-v2 camera-v2 knowledge-v2; do
+for preview in thought-field-home-concept thought-field-studio-concept app-bridge-v2 camera-v2 knowledge-v2; do
   test -s "${project_root}/docs/images/ui-v2/${preview}.png"
 done
 

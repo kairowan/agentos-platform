@@ -1,7 +1,6 @@
 package com.agentos.capability.core
 
 import java.time.Instant
-import java.util.UUID
 
 data class ApprovalRequest(
     val token: String,
@@ -54,10 +53,11 @@ class CapabilityBroker(
     private val registry: CapabilityRegistry,
     private val auditLog: InMemoryCapabilityAuditLog = InMemoryCapabilityAuditLog(),
 ) {
-    private val pending = mutableMapOf<String, SystemCapability>()
+    private val pending = PendingApproval<SystemCapability>()
 
     @Synchronized
     fun request(id: CapabilityId): BrokerOutcome {
+        pending.clear()
         val capability = registry.find(id)
             ?: return BrokerOutcome.Denied("能力未注册").also {
                 audit(id, AuditDecision.POLICY_DENIED)
@@ -69,8 +69,7 @@ class CapabilityBroker(
                 audit(id, AuditDecision.POLICY_DENIED)
             }
             CapabilityRisk.REQUIRES_CONFIRMATION -> {
-                val token = UUID.randomUUID().toString()
-                pending[token] = capability
+                val token = pending.issue(capability)
                 audit(id, AuditDecision.APPROVAL_REQUIRED)
                 BrokerOutcome.ApprovalRequired(
                     ApprovalRequest(
@@ -86,20 +85,23 @@ class CapabilityBroker(
 
     @Synchronized
     fun approve(token: String): BrokerOutcome {
-        val capability = pending.remove(token)
+        val capability = pending.take(token)
             ?: return BrokerOutcome.Denied("确认请求已失效")
         return execute(capability)
     }
 
     @Synchronized
     fun deny(token: String): BrokerOutcome {
-        val capability = pending.remove(token)
+        val capability = pending.take(token)
             ?: return BrokerOutcome.Denied("确认请求已失效")
         audit(capability.descriptor.id, AuditDecision.USER_DENIED)
         return BrokerOutcome.Denied("用户已取消操作")
     }
 
     fun auditSnapshot(): List<CapabilityAuditEvent> = auditLog.snapshot()
+
+    @Synchronized
+    fun cancelPending() = pending.clear()
 
     private fun execute(capability: SystemCapability): BrokerOutcome = try {
         BrokerOutcome.Success(capability.execute()).also {

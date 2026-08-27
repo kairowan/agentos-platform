@@ -12,33 +12,46 @@ flat sticker.
 
 The default `SYSTEM` family is the AgentOS Thought Field. It is intentionally
 genderless, non-human, and not a robot mascot: overlapping deformable black-glass
-lobes form a living consciousness knot around one warm amber core. A deterministic
-volume shader generates dense moving filaments, two depths of particles, and a
-memory constellation behind two procedurally generated, deforming glass surfaces.
-There is no permanent head, torso, clothing, or pair of limbs. Eyes, a voice mark,
-and one flowing gesture limb condense only when communication needs them, then
-dissolve back into the field. The voice mark follows TTS rhythm while gaze, color,
-field speed, and deformation carry listening, thinking, concern, and delight.
+lobes form a living consciousness knot around one warm amber core. A GPU particle
+pipeline generates flowing silk strands bound to the body surface, an
+attribute-less spark field with body dust, ambient motes, and bright fireflies,
+real-projected memory constellation links and star hubs, and out-of-focus bokeh
+discs behind two procedurally generated, deforming glass surfaces. There is no
+permanent head, torso, clothing, or pair of limbs. Eyes, a voice mark, and one
+flowing gesture limb condense only when communication needs them, then dissolve
+back into the field. The voice mark follows TTS rhythm while gaze, color, field
+speed, and deformation carry listening, thinking, concern, and delight.
 
 Human, anime, fantasy, and semi-realistic families are optional user-created
 identities, never the product's default or brand anchor.
 
 ## Runtime
 
-- offline JavaScript/WebGL 1 pipeline for `SYSTEM`, with a full-screen volume pass,
-  two indexed glass-surface layers, a depth pre-pass, and a temporary joint rig;
+- offline JavaScript/WebGL 2 particle pipeline for `SYSTEM`: an HDR scene target
+  (RGBA16F when float-renderable extensions exist, RGBA8 fallback), additive
+  line/point/quad geometry, and a bloom chain (soft-knee bright extract, five-level
+  dual-Kawase blur, screen composite with exposure, vignette, and grain);
+- geometry programs: silk-strand lines bound to the shared body spline
+  (`tf_strand_vertex.glsl`), an attribute-less spark field driven by `gl_VertexID`
+  (`tf_spark_vertex.glsl`), a particle hand flowing along the arm/finger béziers
+  (`tf_hand_vertex.glsl`), 3D constellation links/star nodes, and screen-aligned
+  bokeh quads for depth of field;
+- the amber core and optical eyes are a screen-space flare pass anchored to
+  CPU-projected body points, so they keep their anchor while the field deforms;
+- shared spline math lives in `tf_shared.glsl` and is concatenated after the
+  `#version`/precision prefix by `runtime.js`; the ported glass-shell pair
+  (`tf_glass_vertex/fragment.glsl`) keeps the native GLES silhouette byte-for-byte;
 - native `GLSurfaceView`/OpenGL ES 2.0 fallback plus the existing lit mesh pass for
-  user-created character families;
+  user-created character families (unchanged single-pass shaders);
 - one reusable 64×28 parameter mesh whose vertex shader produces the asymmetric
   head, neck, shoulders, torso, waist, and open tail at runtime; drag rotation now
   changes real surface depth, normals, Fresnel highlights, and occlusion;
-- reusable UV-sphere mesh, transformed into the head, body, eyes, hair, clothing,
-  accessories, expression geometry, and the temporary system hand's arm, palm, and
-  finger joints;
 - no image texture, generated portrait, downloaded model, or per-frame CPU geometry
-  is used by the default identity: black glass, sixteen internal filaments, moving
-  motes, constellation links, core bloom, optical face, layered surface refraction,
-  and temporary gesture geometry are evaluated from bundled shaders every frame;
+  is used by the default identity: strands, sparks, constellation, bokeh, core
+  flare, optical face, layered surface refraction, and temporary gesture geometry
+  are evaluated from bundled shaders every frame;
+- smoothed state: mood accents, hand pose, intensity, speaking, glow, and gaze are
+  exponentially blended so render commands glide instead of popping;
 - orbital inspection camera: drag to rotate and pinch to zoom;
 - visibility-bound animation with device pixel ratio capped at 1.5; hidden WebViews
   stop requesting frames, while the native fallback retains its 30 fps ceiling;
@@ -117,12 +130,13 @@ accepting unsafe model output directly inside a privileged system app.
 ## Reproducible visual verification
 
 `scripts/thought-field-preview.html` loads the exact bundled `runtime.js`, which then
-compiles the production volume, surface, part, and shared glass shaders through
-WebGL 1. It builds the same 64×28 parameter surface and 24×16 joint sphere used by
-the Android WebView. Run `scripts/capture-thought-field-preview.sh` to render the
-fixed speaking/waving frame stored as
-`docs/images/ui-v2/thought-field-runtime-v1.png`. That PNG is test evidence, not a
-runtime input. Runtime or shader changes must regenerate it; AI-generated images
-cannot prove a visual feature exists in code. Final validation still needs a
-representative Android System WebView and GPU because providers, drivers, precision,
-and sustained performance can differ.
+compiles the production particle-pipeline shaders (`tf_*.glsl`) through WebGL 2. It
+builds the same 64×28 parameter surface used by the Android WebView. Run
+`scripts/capture-thought-field-preview.sh` to render the fixed speaking/waving frame
+stored locally as `artifacts/renderer-check/thought-field.png`. That PNG is test
+evidence, not a runtime input or a public showcase asset. Runtime or shader changes
+should regenerate it locally; do not publish it to GitHub. Public 3D illustrations
+use only the two maintainer-selected design concepts, labeled as design targets.
+AI-generated images cannot prove a visual feature exists in code. Final validation
+still needs a representative Android System WebView and GPU because providers,
+drivers, precision, and sustained performance can differ.

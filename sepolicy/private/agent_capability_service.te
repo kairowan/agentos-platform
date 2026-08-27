@@ -7,3 +7,10 @@ type agent_capability_service_data_file, file_type, data_file_type, core_data_fi
 binder_call(agent_capability_service, agent_shell)
 binder_call(agent_capability_service, system_server)
 binder_call(system_server, agent_capability_service)
+
+# Draft only: carrier telephony and the SMS Provider. Validate against the target
+# product's actual provider domains and AVC logs; no raw modem/device access.
+binder_call(agent_capability_service, radio)
+binder_call(radio, agent_capability_service)
+binder_call(agent_capability_service, priv_app)
+binder_call(priv_app, agent_capability_service)

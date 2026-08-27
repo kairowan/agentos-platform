@@ -25,12 +25,15 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.ensureActive
+import kotlin.coroutines.coroutineContext
 
 interface CapabilityGateway {
     val notificationEvents: Flow<AgentNotificationEvent>
     suspend fun request(id: CapabilityId): BrokerOutcome
     suspend fun approve(token: String): BrokerOutcome
     suspend fun deny(token: String): BrokerOutcome
+    suspend fun cancelPending()
     fun close() = Unit
 }
 
@@ -39,11 +42,12 @@ class LocalCapabilityGateway(private val broker: CapabilityBroker) : CapabilityG
     override suspend fun request(id: CapabilityId) = broker.request(id)
     override suspend fun approve(token: String) = broker.approve(token)
     override suspend fun deny(token: String) = broker.deny(token)
+    override suspend fun cancelPending() = broker.cancelPending()
 }
 
 class AgentCapabilityClient(context: Context) : CapabilityGateway {
     private val applicationContext = context.applicationContext
-    private val remote = CompletableDeferred<IAgentCapabilityService>()
+    @Volatile private var remote = CompletableDeferred<IAgentCapabilityService>()
     private val mutableNotificationEvents = MutableSharedFlow<AgentNotificationEvent>(
         extraBufferCapacity = 16,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -71,12 +75,12 @@ class AgentCapabilityClient(context: Context) : CapabilityGateway {
 
         override fun onServiceDisconnected(name: ComponentName) {
             connectedService = null
+            remote = CompletableDeferred()
         }
     }
 
     private val isBound = run {
-        // ponytail: One process-lifetime binding is enough for the single HOME
-        // client. Add reconnect/backoff when more clients or service upgrades exist.
+        // Android reconnects this binding after process death; never replay an IPC.
         val intent = Intent().setComponent(
             ComponentName(CapabilityContract.SERVICE_PACKAGE, CapabilityContract.SERVICE_CLASS),
         )
@@ -94,25 +98,41 @@ class AgentCapabilityClient(context: Context) : CapabilityGateway {
 
     override suspend fun deny(token: String): BrokerOutcome = call { it.deny(token) }
 
+    override suspend fun cancelPending() {
+        withContext(Dispatchers.IO) {
+            try {
+                withTimeout(CONNECT_TIMEOUT_MILLIS) { remote.await() }.cancelPending()
+            } catch (_: TimeoutCancellationException) {
+                // Unreachable service: expiry still applies; do not skip local invalidation.
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // The service also expires approvals and clears them on the next request.
+            }
+        }
+    }
+
     override fun close() {
         connectedService?.let { runCatching { it.unregisterEventListener(eventListener) } }
         if (isBound) runCatching { applicationContext.unbindService(connection) }
     }
 
-    private suspend fun call(block: (IAgentCapabilityService) -> CapabilityReply): BrokerOutcome =
+    private suspend fun call(block: (IAgentCapabilityService) -> CapabilityReply): BrokerOutcome = withContext(Dispatchers.IO) {
+        val service = try {
+            withTimeout(CONNECT_TIMEOUT_MILLIS) { remote.await() }
+        } catch (_: TimeoutCancellationException) {
+            return@withContext BrokerOutcome.Failed("连接 Capability Service 超时，未提交")
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { return@withContext BrokerOutcome.Failed("Capability Service 不可用，未提交") }
+        // After dispatch, a broken Binder or malformed reply is an UNKNOWN outcome,
+        // not proof of failure. The task journal handles it without retrying.
         try {
-            withContext(Dispatchers.IO) {
-                block(withTimeout(CONNECT_TIMEOUT_MILLIS) { remote.await() }).toOutcome()
-            }
+            coroutineContext.ensureActive()
+            block(service).toOutcome()
         } catch (_: SecurityException) {
             BrokerOutcome.Denied("调用方未获 Capability Broker 授权")
-        } catch (_: TimeoutCancellationException) {
-            BrokerOutcome.Failed("连接 Capability Service 超时")
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: Exception) {
-            BrokerOutcome.Failed("Capability Service 不可用")
         }
+    }
 
     private fun CapabilityReply.toOutcome(): BrokerOutcome {
         require(factKeys.size == factValues.size && factKeys.size <= MAX_FACTS)

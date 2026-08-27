@@ -44,11 +44,14 @@ internal fun AgentHomeScreen(
     onModelEndpointChanged: (String) -> Unit,
     onModelNameChanged: (String) -> Unit,
     onModelApiKeyChanged: (String) -> Unit,
+    onMemorySharing: (Boolean) -> Unit,
     onApprove: () -> Unit,
     onDeny: () -> Unit,
     onVoiceSettings: () -> Unit,
     onHistory: () -> Unit,
     onAvatar: () -> Unit,
+    onCommunication: () -> Unit,
+    onInterrupt: () -> Unit,
 ) {
     var keyboardOpen by remember { mutableStateOf(false) }
     AgentBackdrop {
@@ -64,11 +67,12 @@ internal fun AgentHomeScreen(
                 state.isSpeaking -> "正在和你说话"
                 state.isWorking -> "正在思考"
                 state.voiceStatus.contains("聆听") -> "正在聆听"
-                else -> "随时可唤醒"
+                else -> "开发者预览"
             },
             onHistory = onHistory,
             onAvatar = onAvatar,
             onSettings = onToggleModelSettings,
+            onCommunication = onCommunication,
             modifier = Modifier.align(Alignment.TopCenter),
         )
         StageCaption(state, Modifier.align(Alignment.BottomCenter)
@@ -81,7 +85,7 @@ internal fun AgentHomeScreen(
             Box(Modifier.align(Alignment.Center).padding(horizontal = 20.dp)) {
                 ModelSettings(
                     state, onToggleModelSettings, onRemoteModelEnabled,
-                    onModelEndpointChanged, onModelNameChanged, onModelApiKeyChanged,
+                    onModelEndpointChanged, onModelNameChanged, onModelApiKeyChanged, onMemorySharing,
                 )
             }
         }
@@ -94,6 +98,8 @@ internal fun AgentHomeScreen(
             onVoiceSettings = onVoiceSettings,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
+        if (state.isWorking || state.isSpeaking) TextButton(onClick = onInterrupt,
+            modifier = Modifier.align(Alignment.CenterEnd)) { Text("停止") }
     }
 }
 
@@ -104,6 +110,7 @@ private fun StageHeader(
     onHistory: () -> Unit,
     onAvatar: () -> Unit,
     onSettings: () -> Unit,
+    onCommunication: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -118,6 +125,7 @@ private fun StageHeader(
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            StageButton("话", "打开电话与短信", onCommunication)
             StageButton("忆", "打开记忆", onHistory)
             StageButton("人", "编辑角色", onAvatar)
             StageButton("⋯", "打开设置", onSettings)
@@ -128,7 +136,7 @@ private fun StageHeader(
 @Composable
 private fun StageButton(mark: String, description: String, onClick: () -> Unit) {
     Surface(
-        modifier = Modifier.size(42.dp).semantics { contentDescription = description }.clickable(onClick = onClick),
+        modifier = Modifier.size(48.dp).semantics { contentDescription = description }.clickable(onClick = onClick),
         color = Color(0x99111F25),
         shape = CircleShape,
     ) {
@@ -143,7 +151,7 @@ private fun StageCaption(state: AgentUiState, modifier: Modifier = Modifier) {
     val message = when {
         state.notice != null -> state.notice
         state.isWorking -> "我正在理解你的目标…"
-        state.screen == GeneratedScreen.welcome() -> "说“Hey AgentOS”，我在听"
+        state.screen == GeneratedScreen.welcome() -> "键盘输入 time、device 或 wifi 即可离线体验。电话短信请点右上角“话”。系统唤醒需另行集成验证。"
         else -> state.screen.stageText()
     }
     Surface(modifier.padding(horizontal = 28.dp), color = Color(0xB30B171C), shape = RoundedCornerShape(22.dp)) {

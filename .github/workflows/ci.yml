@@ -25,7 +25,11 @@ jobs:
       - name: Validate repository
         run: ./tests/check.sh
       - name: Test and build APK
-        run: gradle --no-daemon testDebugUnitTest assembleDebug
+        run: gradle --no-daemon testDebugUnitTest assembleDebug :apps:AgentShell:assembleDebugAndroidTest
+      - name: Check preview tooling and package matching APKs
+        run: |
+          python3 tests/check_preview_tools.py
+          python3 scripts/package-preview.py
       - uses: actions/upload-artifact@v7
         with:
           name: AgentOS-debug-apks
@@ -33,4 +37,6 @@ jobs:
             apps/AgentShell/build/outputs/apk/debug/AgentShell-debug.apk
             services/AgentCapabilityService/build/outputs/apk/debug/AgentCapabilityService-debug.apk
             services/AgentMediaService/build/outputs/apk/debug/AgentMediaService-debug.apk
+            apps/AgentShell/build/outputs/apk/androidTest/debug/AgentShell-debug-androidTest.apk
+            artifacts/AgentOS-*.zip
           if-no-files-found: error

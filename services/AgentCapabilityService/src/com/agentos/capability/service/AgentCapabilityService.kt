@@ -35,6 +35,11 @@ class AgentCapabilityService : Service() {
     }
 
     private val binder = object : IAgentCapabilityService.Stub() {
+        override fun cancelPending() {
+            enforceAuthorizedCaller()
+            broker.cancelPending()
+        }
+
         override fun requestCapability(capabilityId: String): CapabilityReply {
             enforceAuthorizedCaller()
             val id = capabilityId.takeIf { it.length <= MAX_INPUT_LENGTH }

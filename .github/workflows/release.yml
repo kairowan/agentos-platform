@@ -22,7 +22,11 @@ jobs:
         with:
           gradle-version: "8.12"
       - name: Test and build tagged APK
-        run: gradle --no-daemon testDebugUnitTest assembleDebug
+        run: |
+          ./tests/check.sh
+          python3 tests/check_preview_tools.py
+          gradle --no-daemon testDebugUnitTest assembleDebug
+          python3 scripts/package-preview.py
       - name: Create checksum
         run: |
           cp services/AgentCapabilityService/build/outputs/apk/debug/AgentCapabilityService-debug.apk .
@@ -44,5 +48,6 @@ jobs:
             AgentMediaService-debug.apk \
             AgentShell-debug.apk \
             AgentOS-debug-apks.sha256 \
+            artifacts/AgentOS-*.zip \
             --repo "$GITHUB_REPOSITORY" \
             --clobber

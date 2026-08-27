@@ -9,4 +9,5 @@ interface IAgentCapabilityService {
     CapabilityReply deny(String token);
     void registerEventListener(IAgentEventListener listener);
     void unregisterEventListener(IAgentEventListener listener);
+    void cancelPending();
 }

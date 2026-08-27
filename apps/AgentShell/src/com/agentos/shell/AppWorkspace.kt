@@ -48,6 +48,7 @@ internal fun AppWorkspace(
     onAccessibilitySettings: () -> Unit,
     onApprove: () -> Unit,
     onDeny: () -> Unit,
+    onCancelPending: () -> Unit,
 ) {
     AgentBackdrop {
         Column(
@@ -64,6 +65,7 @@ internal fun AppWorkspace(
             WorkspaceTabs(state.page, onShowApps, onRefreshSemantics)
             if (state.loading) CircularProgressIndicator()
             if (state.message.isNotBlank()) AgentPill(state.message.take(80), AgentBlue)
+            TextButton(onClick = onCancelPending) { Text("停止待执行操作") }
             if (state.page == AppWorkspacePage.APPS) AppList(state.apps, onLaunch)
             else SemanticList(state.activePackage, state.activeTitle, state.nodes,
                 onClickNode, onScrollNode, onSetText, onAccessibilitySettings)

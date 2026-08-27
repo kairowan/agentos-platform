@@ -12,6 +12,20 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CapabilityBrokerTest {
+    @Test fun deniedOrCancelledTokensCannotExecuteLater() {
+        var executions = 0
+        val broker = CapabilityBroker(CapabilityRegistry(listOf(
+            fakeCapability(CapabilityId.WIFI_SETTINGS, CapabilityRisk.REQUIRES_CONFIRMATION) { executions++ },
+        )))
+        val first = (broker.request(CapabilityId.WIFI_SETTINGS) as BrokerOutcome.ApprovalRequired).request.token
+        broker.deny(first)
+        assertTrue(broker.approve(first) is BrokerOutcome.Denied)
+        val second = (broker.request(CapabilityId.WIFI_SETTINGS) as BrokerOutcome.ApprovalRequired).request.token
+        broker.cancelPending()
+        assertTrue(broker.approve(second) is BrokerOutcome.Denied)
+        assertEquals(0, executions)
+    }
+
     @Test
     fun executesReadOnlyCapabilityWithoutConfirmation() {
         var executions = 0

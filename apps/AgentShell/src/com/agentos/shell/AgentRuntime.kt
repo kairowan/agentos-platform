@@ -6,11 +6,14 @@ import com.agentos.capability.core.CapabilityBroker
 import com.agentos.capability.core.CapabilityId
 import com.agentos.capability.core.CapabilityResult
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ensureActive
+import kotlin.coroutines.coroutineContext
 
 data class AgentPlan(
     val screen: GeneratedScreen,
     val capability: CapabilityId? = null,
     val performance: AvatarPerformance = AvatarPerformance(),
+    val taskState: TaskState = TaskState.SUCCEEDED,
 )
 
 data class AgentTurn(
@@ -18,13 +21,17 @@ data class AgentTurn(
     val approval: ApprovalRequest? = null,
     val notice: String? = null,
     val performance: AvatarPerformance = AvatarPerformance(),
+    val taskState: TaskState = TaskState.SUCCEEDED,
 )
 
 fun interface AgentPlanner {
     suspend fun plan(prompt: String): AgentPlan
+    suspend fun planWithMemory(prompt: String, memory: MemoryContext): AgentPlan = plan(prompt)
 }
 
 class LocalAgentPlanner : AgentPlanner {
+    override suspend fun planWithMemory(prompt: String, memory: MemoryContext): AgentPlan =
+        MemoryRecall.localPlan(prompt, memory) ?: plan(prompt)
     override suspend fun plan(prompt: String): AgentPlan {
         // ponytail: This deterministic router is the offline recovery planner.
         // Add intents only while their capability policy remains explicit.
@@ -41,6 +48,7 @@ class LocalAgentPlanner : AgentPlanner {
                         UiBlock.Action("显示设备状态", "查看设备状态"),
                     ),
                 ),
+                taskState = TaskState.FAILED,
             )
         }
         return AgentPlan(
@@ -64,29 +72,37 @@ class AgentRuntime(
         remotePlannerFactory: (ModelConfig) -> AgentPlanner = ::OpenAiCompatiblePlanner,
     ) : this(LocalCapabilityGateway(broker), localPlanner, remotePlannerFactory)
 
-    suspend fun handle(prompt: String, modelConfig: ModelConfig?): AgentTurn {
+    suspend fun handle(
+        prompt: String,
+        modelConfig: ModelConfig?,
+        memory: MemoryContext = MemoryContext(),
+        beforeDispatch: suspend (CapabilityId) -> Unit = {},
+    ): AgentTurn {
         var notice: String? = null
-        val plan = if (modelConfig == null) {
-            localPlanner.plan(prompt)
+        val plan = if (modelConfig == null || MemoryRecall.isLocalQuery(prompt)) {
+            localPlanner.planWithMemory(prompt, memory)
         } else {
             try {
-                remotePlannerFactory(modelConfig).plan(prompt)
+                remotePlannerFactory(modelConfig).planWithMemory(prompt, if (modelConfig.shareMemory) memory else MemoryContext())
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
                 notice = "模型不可用或返回了无效内容，已切换到离线安全模式。"
-                localPlanner.plan(prompt)
+                localPlanner.planWithMemory(prompt, memory)
             }
         }
+        coroutineContext.ensureActive()
+        plan.capability?.let { beforeDispatch(it) }
+        coroutineContext.ensureActive()
         return execute(plan, notice)
     }
 
     suspend fun approve(token: String): AgentTurn = broker.approve(token).toTurn()
 
-    suspend fun deny(token: String): AgentTurn = broker.deny(token).toTurn()
+    suspend fun deny(token: String): AgentTurn = broker.deny(token).toTurn().copy(taskState = TaskState.CANCELLED)
 
     private suspend fun execute(plan: AgentPlan, notice: String?): AgentTurn {
-        val id = plan.capability ?: return AgentTurn(plan.screen, notice = notice, performance = plan.performance)
+        val id = plan.capability ?: return AgentTurn(plan.screen, notice = notice, performance = plan.performance, taskState = plan.taskState)
         return broker.request(id).toTurn(plan.screen, notice, plan.performance)
     }
 }
@@ -102,16 +118,19 @@ private fun BrokerOutcome.toTurn(
         approval = request,
         notice = notice,
         performance = performance,
+        taskState = TaskState.WAITING_CONFIRMATION,
     )
     is BrokerOutcome.Denied -> AgentTurn(
         GeneratedScreen("操作未执行", listOf(UiBlock.Paragraph(reason))),
         notice = notice,
         performance = AvatarPerformance(AvatarEmotion.CONCERNED, AvatarGesture.COMFORT),
+        taskState = TaskState.FAILED,
     )
     is BrokerOutcome.Failed -> AgentTurn(
         GeneratedScreen("能力执行失败", listOf(UiBlock.Paragraph(reason))),
         notice = notice,
         performance = AvatarPerformance(AvatarEmotion.CONCERNED, AvatarGesture.COMFORT),
+        taskState = TaskState.FAILED,
     )
 }
 

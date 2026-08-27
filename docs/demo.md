@@ -34,12 +34,14 @@ enabled automatically by the build or demo workflow.
 4. Disconnect the endpoint and repeat a supported goal.
 5. Verify the warning and automatic offline result.
 
-The `Capture Demo` workflow uses a stock Android 35 emulator, installs tagged
-component APKs, invokes the time capability across Binder, and attaches the PNG to
-the corresponding GitHub release. It validates that component path, **not** a
-custom AOSP 17 system image, a system-installed voice service, or SELinux product
-integration. Feature labels above depend on the selected APK revision; current
-`main` and the v0.4.0 pre-release are not the same UI.
+The current `Verify Developer Preview` workflow checks a matching build on a stock
+Android 35 emulator. It uploads APKs and written verification results, not runtime
+screenshots or recordings, and does not attach images to a GitHub release. Public
+3D images are limited to the two approved design concepts. See the
+[current preview guide](developer-preview.md) for its actual commands and limits.
+This validates component paths, **not** a custom AOSP 17 image, a system-installed
+voice service, or SELinux product integration. The v0.4.0 instructions above and
+current `main` do not describe the same UI.
 
 Full-image build and boot evidence must come from the separate
 [AOSP runbook](https://github.com/kairowan/agentos/blob/main/docs/aosp-build.md).

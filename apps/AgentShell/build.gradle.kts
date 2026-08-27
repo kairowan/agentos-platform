@@ -13,10 +13,10 @@ android {
         applicationId = "com.agentos.shell"
         minSdk = 29
         targetSdk = 35
-        versionCode = 6
-        versionName = "0.5.0-dev"
+        versionCode = providers.gradleProperty("agentosVersionCode").get().toInt()
+        versionName = providers.gradleProperty("agentosVersionName").get()
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "com.agentos.shell.PreviewInstrumentation"
     }
 
     sourceSets {
@@ -27,6 +27,7 @@ android {
             assets.srcDirs("assets")
         }
         getByName("test").java.srcDirs("test")
+        getByName("androidTest").java.srcDirs("androidTest")
     }
 
     buildFeatures {

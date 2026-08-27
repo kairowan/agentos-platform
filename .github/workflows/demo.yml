@@ -1,26 +1,26 @@
-name: Capture Demo
+name: Verify Developer Preview
 
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: Release tag whose APK and screenshot should be reproduced
+      ref:
+        description: Revision to build and record together (must contain preview scripts)
         required: true
-        default: v0.4.0
+        default: main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  screenshot:
+  preview:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 35
     env:
       ANDROID_AVD_HOME: /tmp/agentos-avd
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -29,100 +29,57 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "8.12"
-      - name: Build APK
-        run: gradle --no-daemon testDebugUnitTest assembleDebug
-      - name: Create Android virtual device
+      - name: Build and package one revision
+        run: |
+          gradle --no-daemon testDebugUnitTest assembleDebug :apps:AgentShell:assembleDebugAndroidTest
+          python3 tests/check_preview_tools.py
+          python3 scripts/package-preview.py
+      - name: Create disposable Android virtual device
         run: |
           sdkmanager "platform-tools" "emulator" "system-images;android-35;google_apis;x86_64"
           mkdir -p "$ANDROID_AVD_HOME"
-          echo no | avdmanager create avd \
-            --force \
-            --name agentos-demo \
-            --package "system-images;android-35;google_apis;x86_64" \
-            --device pixel_6
-          "$ANDROID_SDK_ROOT/emulator/emulator" -list-avds | grep -Fx agentos-demo
+          echo no | avdmanager create avd --name agentos-demo \
+            --package "system-images;android-35;google_apis;x86_64" --device pixel_6
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
-      - name: Capture real shell screenshot
+      - name: Verify installed components and record the offline flow
         run: |
-          "$ANDROID_SDK_ROOT/emulator/emulator" \
-            -avd agentos-demo \
-            -no-window \
-            -noaudio \
-            -no-boot-anim \
-            -no-snapshot \
-            -gpu swiftshader_indirect \
-            >/tmp/agentos-emulator.log 2>&1 &
+          "$ANDROID_SDK_ROOT/emulator/emulator" -avd agentos-demo -port 5554 \
+            -no-window -noaudio -no-boot-anim -no-snapshot -gpu swiftshader_indirect \
+            >artifacts/emulator.log 2>&1 &
           emulator_pid=$!
           trap 'kill "$emulator_pid" 2>/dev/null || true' EXIT
-          if ! timeout 180 adb wait-for-device; then
-            cat /tmp/agentos-emulator.log
-            exit 1
-          fi
+          timeout 180 adb -s emulator-5554 wait-for-device
           for attempt in $(seq 1 60); do
-            if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then
-              break
-            fi
+            if [ "$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then break; fi
             sleep 3
           done
-          if [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]; then
-            cat /tmp/agentos-emulator.log
-            exit 1
-          fi
-          adb install -r services/AgentCapabilityService/build/outputs/apk/debug/AgentCapabilityService-debug.apk
-          adb install -r services/AgentMediaService/build/outputs/apk/debug/AgentMediaService-debug.apk
-          adb install -r apps/AgentShell/build/outputs/apk/debug/AgentShell-debug.apk
-          adb shell input keyevent 82
-          adb shell am start -W -n com.agentos.shell/.MainActivity
-          sleep 3
-          adb shell uiautomator dump /sdcard/agentos-before.xml
-          adb pull /sdcard/agentos-before.xml /tmp/agentos-before.xml
-          grep -q 'text="小 A"' /tmp/agentos-before.xml
-          grep -q 'text="键盘"' /tmp/agentos-before.xml
-          tap_coordinates=$(python3 -c 'import re,sys,xml.etree.ElementTree as ET; node=next(n for n in ET.parse(sys.argv[1]).iter("node") if n.get("text") == "键盘"); x1,y1,x2,y2=map(int,re.findall(r"\d+",node.get("bounds"))); print((x1+x2)//2,(y1+y2)//2)' /tmp/agentos-before.xml)
-          adb shell input tap $tap_coordinates
-          sleep 1
-          adb shell uiautomator dump /sdcard/agentos-keyboard.xml
-          adb pull /sdcard/agentos-keyboard.xml /tmp/agentos-keyboard.xml
-          input_coordinates=$(python3 -c 'import re,sys,xml.etree.ElementTree as ET; node=next(n for n in ET.parse(sys.argv[1]).iter("node") if n.get("class") == "android.widget.EditText"); x1,y1,x2,y2=map(int,re.findall(r"\d+",node.get("bounds"))); print((x1+x2)//2,(y1+y2)//2)' /tmp/agentos-keyboard.xml)
-          adb shell input tap $input_coordinates
-          adb shell input text time
-          submit_coordinates=$(python3 -c 'import re,sys,xml.etree.ElementTree as ET; node=next(n for n in ET.parse(sys.argv[1]).iter("node") if n.get("text") == "↑"); x1,y1,x2,y2=map(int,re.findall(r"\d+",node.get("bounds"))); print((x1+x2)//2,(y1+y2)//2)' /tmp/agentos-keyboard.xml)
-          adb shell input tap $submit_coordinates
-          for attempt in $(seq 1 10); do
-            sleep 1
-            adb shell uiautomator dump /sdcard/agentos-window.xml
-            adb pull /sdcard/agentos-window.xml /tmp/agentos-window.xml
-            if grep -q 'text="本地时间"' /tmp/agentos-window.xml; then break; fi
-          done
-          python3 -c 'import sys,xml.etree.ElementTree as ET; print("UI text:", " | ".join(filter(None,(n.get("text") for n in ET.parse(sys.argv[1]).iter("node")))))' /tmp/agentos-window.xml
-          mkdir -p demo
-          adb exec-out screencap -p > demo/AgentShell-home.png
-          grep -q 'text="本地时间"' /tmp/agentos-window.xml
-          grep -q 'system.time.read 通过 Capability Broker 提供' /tmp/agentos-window.xml
-          shell_uid=$(adb shell pm list packages -U com.agentos.shell | sed -n 's/.*uid:\([0-9]*\).*/\1/p' | tr -d '\r')
-          service_uid=$(adb shell pm list packages -U com.agentos.capability | sed -n 's/.*uid:\([0-9]*\).*/\1/p' | tr -d '\r')
-          echo "Shell UID: $shell_uid; Capability Service UID: $service_uid"
-          test -n "$shell_uid"
-          test -n "$service_uid"
-          test "$shell_uid" != "$service_uid"
-          test -n "$(adb shell pidof com.agentos.capability | tr -d '\r')"
-          file demo/AgentShell-home.png | grep -q 'PNG image data'
+          test "$(adb -s emulator-5554 shell getprop sys.boot_completed | tr -d '\r')" = "1"
+          bundle=$(python3 -c 'from pathlib import Path; print(next(p.parent for p in Path("artifacts").glob("AgentOS-*/manifest.json")))')
+          python3 scripts/preview-device.py install --bundle "$bundle" \
+            --serial emulator-5554 --state artifacts/original-defaults.json
+          adb -s emulator-5554 install -r apps/AgentShell/build/outputs/apk/androidTest/debug/AgentShell-debug-androidTest.apk
+          adb -s emulator-5554 shell am instrument -w \
+            com.agentos.shell.test/com.agentos.shell.PreviewInstrumentation | tee artifacts/room-check.txt
+          grep -q '^PASS: Room' artifacts/room-check.txt
+          adb -s emulator-5554 shell settings put system screen_off_timeout 600000
+          adb -s emulator-5554 shell input keyevent 82
+          adb -s emulator-5554 shell wm size 720x1280
+          adb -s emulator-5554 shell wm density 280
+          # Explicit grants apply only to this disposable CI emulator.
+          adb -s emulator-5554 shell cmd role add-role-holder --user 0 android.app.role.DIALER com.agentos.capability 0
+          adb -s emulator-5554 shell cmd role add-role-holder --user 0 android.app.role.SMS com.agentos.capability 0
+          adb -s emulator-5554 shell pm grant com.agentos.capability android.permission.READ_PHONE_STATE
+          adb -s emulator-5554 shell pm grant com.agentos.capability android.permission.CALL_PHONE
+          adb -s emulator-5554 shell pm grant com.agentos.capability android.permission.POST_NOTIFICATIONS
+          python3 scripts/capture-preview.py --serial emulator-5554 --check-communications
+      # Approved public output: packages and written results only, no runtime media.
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: AgentShell-demo
+          name: AgentOS-component-preview-${{ github.run_id }}
           path: |
-            demo/AgentShell-home.png
-            /tmp/agentos-before.xml
-            /tmp/agentos-window.xml
+            artifacts/AgentOS-*.zip
+            artifacts/preview-recording/verification.json
+            artifacts/room-check.txt
+            artifacts/emulator.log
           if-no-files-found: warn
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: AgentShell-emulator-log
-          path: /tmp/agentos-emulator.log
-          if-no-files-found: warn
-      - name: Attach screenshot to release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ inputs.tag }}" demo/AgentShell-home.png --clobber

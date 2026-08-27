@@ -18,12 +18,14 @@ import kotlinx.coroutines.withTimeout
 
 internal class AgentAppBridgeClient(context: Context) : AutoCloseable {
     private val applicationContext = context.applicationContext
-    private val remote = CompletableDeferred<IAgentAppBridgeService>()
+    @Volatile private var remote = CompletableDeferred<IAgentAppBridgeService>()
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, binder: IBinder) {
             remote.complete(IAgentAppBridgeService.Stub.asInterface(binder))
         }
-        override fun onServiceDisconnected(name: ComponentName) = Unit
+        override fun onServiceDisconnected(name: ComponentName) {
+            remote = CompletableDeferred()
+        }
     }
     private val isBound = applicationContext.bindService(
         Intent().setComponent(ComponentName(AppBridgeContract.SERVICE_PACKAGE, AppBridgeContract.SERVICE_CLASS)),
@@ -38,6 +40,7 @@ internal class AgentAppBridgeClient(context: Context) : AutoCloseable {
         call { it.requestNodeAction(packageName, path, action, value) }
     suspend fun approve(token: String): AppBridgeReply = call { it.approve(token) }
     suspend fun deny(token: String): AppBridgeReply = call { it.deny(token) }
+    suspend fun cancelPending() = call { it.cancelPending() }
 
     private suspend fun <T> call(block: (IAgentAppBridgeService) -> T): T = withContext(Dispatchers.IO) {
         block(withTimeout(CONNECT_TIMEOUT_MILLIS) { remote.await() })

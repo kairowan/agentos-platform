@@ -38,27 +38,23 @@ design goals, not proof of implemented or validated behavior.
 | --- | --- |
 | ![AgentOS home design concept](images/ui-v2/thought-field-home-concept.png) | ![AgentOS Character Studio design concept](images/ui-v2/thought-field-studio-concept.png) |
 
-## Runtime-derived avatar capture
+## Local-only runtime verification
 
-The following frame is rendered by AgentShell's bundled JavaScript runtime using the
-production volume and glass shaders, indexed 3D surface, and joint rig. The checked-in
-browser harness loads that exact runtime. It is not AI-generated and is never loaded
-as a texture by the app. It records the implemented character material and effects,
-separately from the visual targets above; real Android System WebView/GPU validation
-is still required.
+Runtime avatar screenshots and recordings are development evidence, not approved
+public artwork. Keep them under ignored `artifacts/`; do not attach them to GitHub
+documentation, releases or Actions artifacts. Public 3D illustrations use only the
+two design concepts above, always labeled as concepts rather than running code.
 
-<details>
-<summary>View the separate renderer-derived capture / 查看代码渲染记录</summary>
-
-![AgentOS production thought-field shader](images/ui-v2/thought-field-runtime-v1.png)
-
-</details>
+The browser harness still loads the bundled JavaScript runtime and production
+shaders. Its output is not an app texture or proof of Android GPU performance.
+See [developer-preview verification](preview-validation.md) for written results,
+the reproducible confirmation/call/SMS workflow and remaining verification limits.
 
 ## Other Compose layout references
 
 These mockups describe placement, typography, and interaction hierarchy only. Their
-pixels are not implementation evidence. Earlier home and studio mockups remain in
-the image directory as historical references.
+pixels are not implementation evidence. Earlier home/studio mockups and runtime
+captures have been moved out of the public image directory into local backups.
 
 | App capability center | Native camera |
 | --- | --- |

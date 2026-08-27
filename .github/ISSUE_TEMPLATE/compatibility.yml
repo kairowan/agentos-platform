@@ -1,0 +1,38 @@
+name: Developer preview compatibility
+description: Report a reproducible pass/failure on a test device or emulator
+title: "[Preview] "
+labels: [bug]
+body:
+  - type: input
+    id: revision
+    attributes:
+      label: APK version and commit
+      description: Include the bundle version, commit and dirty flag from manifest.json.
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android API
+      description: Emulator or physical test device? Do not include serial, phone number or IMEI.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Exact steps, expected and actual behavior
+      description: Include which component/default roles were enabled; separate simulation from real-carrier testing.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted evidence
+      description: Screenshots, verification.json or relevant logs; remove contacts, message bodies, credentials and identifiers.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: I removed private communication data and credentials from this report.
+          required: true

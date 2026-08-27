@@ -36,12 +36,18 @@ internal object AppAdapterCatalog {
 }
 
 internal object AppActionPolicy {
-    private val riskyWords = listOf(
-        "支付", "付款", "购买", "下单", "提交订单", "发送", "发布", "删除", "转账",
-        "pay", "buy", "order", "send", "publish", "delete", "transfer",
+    fun canAccessPackage(packageName: String): Boolean = packageName.isNotBlank() &&
+        !packageName.startsWith("com.agentos.") && packageName !in setOf(
+            "com.android.settings", "com.android.systemui",
+            "com.android.permissioncontroller", "com.google.android.permissioncontroller",
+        )
+
+    // ponytail: Generic nodes have no trustworthy business semantics. All clicks
+    // and edits need approval; only the two supported scroll actions skip it.
+    fun requiresApproval(action: Int): Boolean = action !in setOf(
+        AppBridgeContract.ACTION_SCROLL_FORWARD, AppBridgeContract.ACTION_SCROLL_BACKWARD,
     )
 
-    fun requiresApproval(action: Int, nodeText: String): Boolean =
-        action == AppBridgeContract.ACTION_SET_TEXT ||
-            action == AppBridgeContract.ACTION_CLICK && riskyWords.any(nodeText.lowercase()::contains)
+    fun isSensitive(password: Boolean, accessibilitySensitive: Boolean): Boolean =
+        password || accessibilitySensitive
 }

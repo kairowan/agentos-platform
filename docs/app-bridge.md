@@ -12,9 +12,8 @@ provides a signature-protected AIDL boundary. Its first vertical slice supports:
   social, shopping, music, maps, and a safe generic fallback;
 - one-time, 60-second confirmation tokens before opening another application;
 - a maximum 200-node semantic snapshot from the optional accessibility bridge;
-- generic click and scroll actions plus confirmed text input;
-- confirmation for transaction-like clicks such as pay, order, send, publish,
-  transfer, and delete;
+- explicit confirmation for **every** click and text input, independent of label;
+- only the two explicit scroll actions bypass confirmation;
 - package, node path, class, and text revalidation before a queued action runs.
 
 The accessibility service is never enabled silently. Open **应用能力桥**, choose
@@ -26,10 +25,22 @@ semantics can legitimately produce an empty or incomplete snapshot.
 ## Security boundary
 
 Only the single platform-signed AgentShell package can bind. Inputs and result
-counts are bounded. App launches, text entry, and risky clicks use one-time tokens;
+counts are bounded. App launches, text entry, and all clicks use one-time tokens;
 queued actions run only when the package and the original node path, class, and text
 still match. Payment credentials, CAPTCHA solving, private storage access, hidden
 network APIs, and automatic final payment remain outside this bridge.
+
+Password nodes and Android 14+ nodes marked `accessibilityDataSensitive` (including
+their subtrees) are excluded. Editable fields are represented by a placeholder,
+not their existing contents. This is not a general detector for sensitive text in
+apps that fail to mark their nodes. Locked-device reads/actions are rejected.
+
+Queued actions have a separate five-second, single-use execution authorization.
+Cancellation, a replacement request, service interruption/unbinding or process
+restart invalidates it, including callbacks already posted to the main thread.
+The workspace's **停止待执行操作** clears queued work; it cannot undo an action
+that already ran. `STATUS_QUEUED` means queued, **not** verified completion. There
+is no automatic retry and no universal downstream business-result verification.
 
 ## Adapter direction
 
