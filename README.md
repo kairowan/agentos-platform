@@ -3,9 +3,14 @@
 [![CI](https://github.com/kairowan/agentos-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/kairowan/agentos-platform/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/kairowan/agentos-platform?include_prereleases)](https://github.com/kairowan/agentos-platform/releases)
 
-Buildable AgentOS product code for AOSP 17. The
+AgentOS component code and experimental product integration targeting AOSP 17. The
 [`agentos`](https://github.com/kairowan/agentos) bootstrap checks this repository
 out at `vendor/agentos` inside the AOSP source tree.
+
+**Validation status:** `v0.4.0` is an APK pre-release, not a complete OS image.
+Current CI tests/builds the standalone components. The full AOSP product,
+system-only voice service, SELinux integration, and Cuttlefish boot have not yet
+been validated. See the [full-build evidence runbook](https://github.com/kairowan/agentos/blob/main/docs/aosp-build.md).
 
 ![AgentOS production thought-field shader output](docs/images/ui-v2/thought-field-runtime-v1.png)
 
@@ -16,7 +21,7 @@ speaking/waving frame so the visual implementation can be reviewed without an
 Android device. Native Compose layout references are documented separately in
 [`docs/ui-system.md`](docs/ui-system.md).
 
-## v0.4 baseline
+## v0.4.0 APK pre-release baseline
 
 - Voice-first Kotlin UI using the platform speech recognizer and text-to-speech
 - Broker-owned notification listener with bounded message-event filtering
@@ -24,14 +29,14 @@ Android device. Native Compose layout references are documented separately in
 - Kotlin and Jetpack Compose HOME activity
 - Validated generated-interface data model and JSON Schema
 - Separate capability-service APK behind a typed AIDL interface
-- Signature permission, Binder caller checks, and SELinux domain policy
+- Signature permission, Binder caller checks, and draft SELinux domain policy
 - Capability Broker with risk classes, one-time confirmation, and bounded audit log
 - Time, device, private-storage, and confirmed Wi-Fi settings capabilities
 - Strict generated-UI JSON parser with size, field, type, and capability allowlists
 - Optional OpenAI-compatible planner with HTTPS policy and in-memory credentials
 - Deterministic local planner and automatic fail-safe model fallback
 - Lifecycle-aware state holder and JVM unit tests
-- Gradle build for daily development and Soong build for AOSP integration
+- Gradle build for daily development and unvalidated Soong definitions for AOSP integration
 
 ## Current `main`: system hotword path
 
@@ -88,8 +93,8 @@ extracted semantic graph of people, relationships, preferences, projects, places
 and long-term facts on a pannable, 0.35×–4× zoomable, editable mind-map canvas. Every relation retains source evidence and confidence; model
 inferences are visibly marked as candidates and cannot authorize capabilities.
 
-This source boundary is buildable only inside AOSP; the standalone Gradle build
-continues to cover the Shell, Broker, and their unit tests. Real always-on wake-up
+This source boundary requires AOSP and has not yet been compiled there; the standalone Gradle build
+covers the Shell, Broker, Media Service, and their unit tests. Real always-on wake-up
 also requires a target device with a SoundTrigger DSP and an enrolled keyphrase
 model. Cuttlefish does not supply proof of that hardware path.
 
@@ -114,14 +119,17 @@ services/AgentMediaService/build/outputs/apk/debug/AgentMediaService-debug.apk
 ```
 
 GitHub Actions runs the same test and build for every commit and pull request.
-Current APKs are available from
-[the v0.4.0 pre-release](https://github.com/kairowan/agentos-platform/releases/tag/v0.4.0).
+The downloadable baseline is
+[the v0.4.0 pre-release](https://github.com/kairowan/agentos-platform/releases/tag/v0.4.0)
+(Shell and Capability Service APKs). Current `main` CI artifacts include the newer
+Media Service and subsequent changes; do not mix APKs from different revisions.
 Version tags are rebuilt by a separate release workflow, which publishes both the
 APK and its SHA-256 checksum from the tagged commit.
 
 ## AOSP build
 
-From the AOSP tree created by the main repository:
+The following module-only integration command is still unvalidated. From the
+AOSP tree created by the entry repository:
 
 ```bash
 source build/envsetup.sh
@@ -129,7 +137,12 @@ lunch agentos_cf_x86_64-aosp_current-userdebug
 m AgentShell AgentCapabilityService AgentMediaService AgentVoiceService
 ```
 
-Use `m` instead of the two module targets to build the complete Cuttlefish image.
+These four module targets do **not** produce proof of a full Cuttlefish image.
+For the full image, run the entry repository's `scripts/build.sh`, which invokes
+`m` without module targets and records source, logs, resources, and image checksums.
+Follow its [runbook](https://github.com/kairowan/agentos/blob/main/docs/aosp-build.md)
+for a separate matching-image boot check. A successful Gradle build is not a
+successful AOSP build.
 
 ## Security boundary
 
