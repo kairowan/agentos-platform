@@ -27,25 +27,38 @@ State remains in existing `StateFlow` ViewModels. Composables receive immutable
 state snapshots and event callbacks; they do not bind services, perform storage,
 or execute privileged actions during composition.
 
-## Runtime-derived avatar baseline
+## Selected 3D visual targets
+
+**设计效果图，非当前代码运行截图。** These two maintainer-selected references define
+the intended full-screen companion and Character Studio appearance. The current
+renderer does not yet match their fidelity; depicted controls and effects are
+design goals, not proof of implemented or validated behavior.
+
+| Agent home · 首页 | Character Studio · 角色工作室 |
+| --- | --- |
+| ![AgentOS home design concept](images/ui-v2/thought-field-home-concept.png) | ![AgentOS Character Studio design concept](images/ui-v2/thought-field-studio-concept.png) |
+
+## Runtime-derived avatar capture
 
 The following frame is rendered by AgentShell's bundled JavaScript runtime using the
 production volume and glass shaders, indexed 3D surface, and joint rig. The checked-in
 browser harness loads that exact runtime. It is not AI-generated and is never loaded
-as a texture by the app. It is the source of truth for the character material and
-effects; real Android System WebView/GPU validation is still required.
+as a texture by the app. It records the implemented character material and effects,
+separately from the visual targets above; real Android System WebView/GPU validation
+is still required.
+
+<details>
+<summary>View the separate renderer-derived capture / 查看代码渲染记录</summary>
 
 ![AgentOS production thought-field shader](images/ui-v2/thought-field-runtime-v1.png)
 
-## Compose layout references
+</details>
+
+## Other Compose layout references
 
 These mockups describe placement, typography, and interaction hierarchy only. Their
-avatar pixels are not implementation evidence and must not override the runtime-derived
-shader baseline above.
-
-| Agent home | Character studio |
-| --- | --- |
-| ![AgentOS home screen](images/ui-v2/home-v7.png) | ![AgentOS 3D character studio](images/ui-v2/character-studio-v6.png) |
+pixels are not implementation evidence. Earlier home and studio mockups remain in
+the image directory as historical references.
 
 | App capability center | Native camera |
 | --- | --- |

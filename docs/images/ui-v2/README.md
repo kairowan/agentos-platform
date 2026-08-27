@@ -1,20 +1,28 @@
 # AgentOS UI visual baseline
 
-This directory contains one renderer-derived character capture plus generated
-high-fidelity layout mockups. The mockups are not screenshots from an emulator or
-physical device. The shader capture is generated from executable renderer code and
-is never used as an app texture.
+This directory separates selected design targets, a renderer-derived character
+capture, and historical layout mockups. Design references are not screenshots from
+the current code, an emulator, or a physical device. The renderer capture is produced
+by executable code. None of these documentation PNGs is used as an app texture.
+
+The two selected concepts were supplied by the maintainer and are preserved without
+resizing or repainting. They are the README showcase and the intended visual
+direction; the current renderer does not yet achieve their appearance.
 
 ## Screens
 
+- `thought-field-home-concept.png`: selected full-screen companion design target;
+  **设计效果图，非当前代码运行截图**;
+- `thought-field-studio-concept.png`: selected 3D Character Studio design target;
+  **设计效果图，非当前代码运行截图**;
 - `thought-field-runtime-v1.png`: deterministic output from the production offline
   JavaScript/WebGL runtime, volume shader, indexed 3D glass surfaces, and depth-tested
   joint rig at the fixed speaking/waving preview state; this is the only current
   character image generated directly by executable renderer code;
-- `home-v7.png`: full-screen Compose layout mockup containing the Thought Field concept;
+- `home-v7.png`: previous full-screen Compose layout mockup containing the Thought Field concept;
 - `home-v6.png`: previous split-seed native-form home;
 - `home-v4.png`: previous card-based 3D avatar home;
-- `character-studio-v6.png`: Character Studio layout mockup with thought-field controls;
+- `character-studio-v6.png`: previous Character Studio layout mockup with thought-field controls;
 - `character-studio-v5.png`: previous split-seed native-form studio;
 - `character-studio-v4.png`: previous human character studio baseline;
 - `home-v3.png` and `character-studio-v3.png`: previous 2D character baseline;
@@ -25,7 +33,7 @@ is never used as an app texture.
 
 ## Runtime shader capture
 
-The character baseline is not made with an image generator. From the repository root:
+The separate runtime capture is not made with an image generator. From the repository root:
 
 ```bash
 scripts/capture-thought-field-preview.sh

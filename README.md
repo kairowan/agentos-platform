@@ -12,14 +12,20 @@ Current CI tests/builds the standalone components. The full AOSP product,
 system-only voice service, SELinux integration, and Cuttlefish boot have not yet
 been validated. See the [full-build evidence runbook](https://github.com/kairowan/agentos/blob/main/docs/aosp-build.md).
 
-![AgentOS production thought-field shader output](docs/images/ui-v2/thought-field-runtime-v1.png)
+## 3D visual direction / 3D 视觉目标
 
-The image above is a deterministic capture of the same offline JavaScript/WebGL
-runtime and production shaders bundled in AgentShell—not an AI-generated concept
-image and not a texture used by the app. It fixes the runtime state at one
-speaking/waving frame so the visual implementation can be reviewed without an
-Android device. Native Compose layout references are documented separately in
-[`docs/ui-system.md`](docs/ui-system.md).
+**设计效果图，非当前代码运行截图。** 以下两张图是项目选定的首页与角色工作室视觉目标，
+当前 3D 渲染实现尚未达到图中的效果。
+
+| 全屏智能体 · Home | 3D 角色工作室 · Character Studio |
+| --- | --- |
+| ![AgentOS full-screen companion design concept, not a runtime screenshot](docs/images/ui-v2/thought-field-home-concept.png) | ![AgentOS 3D Character Studio design concept, not a runtime screenshot](docs/images/ui-v2/thought-field-studio-concept.png) |
+
+These maintainer-selected design references show the intended appearance, not
+implemented rendering fidelity or verified features. They are documentation assets,
+not textures loaded by the app. The separate
+[renderer-derived capture](docs/images/ui-v2/thought-field-runtime-v1.png) and
+[UI implementation notes](docs/ui-system.md) remain available for comparison.
 
 ## v0.4.0 APK pre-release baseline
 
